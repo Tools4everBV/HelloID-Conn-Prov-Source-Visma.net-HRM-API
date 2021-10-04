@@ -1,0 +1,53 @@
+[
+  {
+    "key": "BaseUrl",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "BaseUrl",
+      "placeholder": "https://api.analytics1.hrm.visma.net",
+      "description": "The url to the Raet Visma API",
+      "required": true
+    }
+  },
+  {
+    "key": "CallBackUrl",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "CallBackUrl",
+      "description": "With the CallBackUrl the results will be posted to the URL specified in your request.",
+      "required": true
+    }
+  },
+    {
+    "key": "ClientID",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "ClientID",
+      "description": "The ClientID to authenticate against the API",
+      "required": true
+    }
+  },
+  {
+    "key": "ClientSecret",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "ClientSecret",
+      "type": "password",
+      "required": false
+    }
+  },
+    {
+    "key": "TenantID",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "TenantID",
+      "description": "The TenantID for your Raet Visma environment",
+      "required": true
+    }
+  }
+]
