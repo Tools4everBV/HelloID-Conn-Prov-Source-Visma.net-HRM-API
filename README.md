@@ -4,13 +4,16 @@
   <img src="https://www.visma.com/globalassets/global/common-images/logos/vismalogo.svg">
 </p>
 
+> Before implementing this connector, Raet Visma will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented. 
+> See section: _Remarks - EmployeeId is not unique_
+
 ## Table of contents
 
 - [Introduction](#Introduction)
 - [Getting started](#Getting-started)
   + [Connection settings](#Connection-settings)
-  + [Remarks](#Remarks)
   + [Contents](#Contents)
+- [Remarks](#Remarks)
 - [Setup the connector](Setup-The-Connector)
 - [Change history](Change-history)
 - [Getting help](Getting-help)
@@ -42,13 +45,59 @@ The following settings are required to connect to the API.
 | ClientSecret | The ClientSecret to authenticate against the API | Yes |
 | TenantID | The TenantID for your Raet Visma environment| Yes |
 
-### Remarks
+### Contents
 
-#### HelloID import
+| Files       | Description                                |
+| ----------- | ------------------------------------------ |
+| Configuration.json | The configuration settings for the connector |
+| Persons.ps1 | Retrieves the person and contract data |
+| Departments.ps1 | Retrieves the department data |
+| Mapping.json | A basic mapping for both persons and contracts |
+
+## Remarks
+
+### EmployeeId is not unique
+
+By default, the employeeId within Raet Visma is not a unique value. Raet Visma can solve this by adding a custom calculating to generate a 
+_uniqueId_. This _uniqueId_ will be stored in a custom field. The field varies for each Raet Visma implementation. 
+
+After Raet Visma calculated and generated the custom field, changes will have to be made to the code to accomodate the new field.
+
+1. Currently, a lookup table is created based on the _'employeeid'_. This will have to be changed according to the customer implementation. 
+
+    ```powershell
+      $lookupContracts = $contracts | Group-Object -Property employeeid -AsHashTable
+    ```
+
+2. Next, we loop through all employees and find the _contractsInScope_. Or; in other words, find all contracts for a particular employee. The value that will be fed is set to the _employeeid_. This will have to be changed according to the customer implementation.
+
+    ```powershell
+    foreach ($employee in $employees){
+        $contractInScope = $lookupContracts[$employee.employeeid]
+    ```
+
+3. Finally, we add the 'ExternalId' noteproperty on both the contract and employee object. The value for the _ExternalId_ currently is set to the _employeeid_. This will have to be changed according to the customer implementation.
+
+    ```powershell
+    if ($contractInScope.count -ge 1){
+        $contractInScope.Foreach({
+            $_ | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $_.employeeid
+        })
+        $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $employee.employeeid
+        $employee | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $employee.formattedname
+        $employee | Add-Member -MemberType NoteProperty -Name 'Contracts' -Value $contractInScope
+
+        $resultList.add($employee)
+    }
+    ```
+
+> Before implementing this connector, Raet Visma will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented. 
+
+### Which data will be imported in HelloID
 
 At this point, only employees _with_ a contract are imported into HelloID.
 
-#### API calls
+### Complexity in how data must be retrieved from the Raet Visma API
 
 The data from Visma must be gathered in five different stages.
 1. Request token
@@ -69,15 +118,6 @@ The third stage (check if the export is ready for download) returns a json objec
 
 When the is export is ready, the status changes to _Completed_. The connector will continously check the status until it has changed to _Completed_.
 Now, this works fine on our test environment. However, in a real life environment, there might be a situation where the status won't change to _Completed_ and you end up with an endless loop. We haven't experienced this behavior ourselves but it's good to be aware of it.
-
-### Contents
-
-| Files       | Description                                |
-| ----------- | ------------------------------------------ |
-| Configuration.json | The configuration settings for the connector |
-| Persons.ps1 | Retrieves the person and contract data |
-| Departments.ps1 | Retrieves the department data |
-| Mapping.json | A basic mapping for both persons and contracts |
 
 ## Setup the connector
 
