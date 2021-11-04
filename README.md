@@ -4,7 +4,7 @@
   <img src="https://www.visma.com/globalassets/global/common-images/logos/vismalogo.svg">
 </p>
 
-> Before implementing this connector, Raet Visma will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented. 
+> Before implementing this connector, Raet Visma will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented.
 > See section: _Remarks - EmployeeId is not unique_
 
 ## Table of contents
@@ -58,12 +58,23 @@ The following settings are required to connect to the API.
 
 ### EmployeeId is not unique
 
-By default, the employeeId within Raet Visma is not a unique value. Raet Visma can solve this by adding a custom calculating to generate a 
-_uniqueId_. This _uniqueId_ will be stored in a custom field. The field varies for each Raet Visma implementation. 
+By default, the employeeId within Raet Visma does not contain a unique value. Raet Visma can solve this by adding a custom calculating to generate a
+_uniqueId_. This _uniqueId_ will be stored in a custom field. The field varies for each Raet Visma implementation.
+This field can be found in the 'Employee-UDF' array in the raw data. By default; the 'value' containing the uniqueId is mapped to the 'ExternalId' of a person.
+
+In our test environment, the _'Employee-UDF'_ array is empty for some employees. When the array is empty, the 'ExternalId' is mapped to the _'employeeid'_ on the employee object.
+
+```powershell
+if ($employeeFieldsInScope){
+    $externalId = $employeeFieldsInScope.value
+} else {
+    $externalId = $employee.employeeid
+}
+```
 
 After Raet Visma calculated and generated the custom field, changes will have to be made to the code to accomodate the new field.
 
-1. Currently, a lookup table is created based on the _'employeeid'_. This will have to be changed according to the customer implementation. 
+1. Currently, a lookup table is created based on the _'employeeid'_. This will have to be changed according to the customer implementation.
 
     ```powershell
       $lookupContracts = $contracts | Group-Object -Property employeeid -AsHashTable
@@ -91,7 +102,7 @@ After Raet Visma calculated and generated the custom field, changes will have to
     }
     ```
 
-> Before implementing this connector, Raet Visma will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented. 
+> Before implementing this connector, Raet Visma will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented.
 
 ### Which data will be imported in HelloID
 
@@ -129,8 +140,10 @@ For help setting up a new source connector, please refer to our [documentation](
 
 | File               | Version | Changes
 | ------------------ | ------- | ----------------|
-| persons.p1         | 1.0.0.0 | Initial release |
-| departments.p1     | 1.0.0.0 | Initial release |
+| persons.p1         | 1.0.0.1 | <ul><li>Added 'user-defined-fields' for both persons and contracts</li><li>Updated errorhandling</li></ul> |
+| departments.p1     | 1.0.0.1 | <ul><li>Updated errorhandling</li></ul> |
+| persons.p1         | 1.0.0.0 | <ul><li>Initial release</li></ul> |
+| departments.p1     | 1.0.0.0 | <ul><li>Initial release</li></ul> |
 
 ## Getting help
 

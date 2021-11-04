@@ -1,7 +1,7 @@
 ########################################################################
 # HelloID-Conn-Prov-Source-Raet-Visma-API-Persons
 #
-# Version: 1.0.0.0
+# Version: 1.0.0.1
 ########################################################################
 $VerbosePreference = "Continue"
 
@@ -34,7 +34,7 @@ function Get-VismaEmployeeData {
     [System.Collections.Generic.List[object]]$resultList = @()
 
     try {
-        $exportData = @('employees', 'contracts')
+        $exportData = @('employees', 'employee-udf', 'contracts', 'contract-udf')
 
         Write-Verbose 'Retrieving Visma AccessToken'
         $accessToken = Get-VismaOauthToken -ClientID $ClientID -ClientSecret $ClientSecret -TenantID $TenantID
@@ -44,9 +44,9 @@ function Get-VismaEmployeeData {
         $headers.Add('Authorization', "Bearer $($AccessToken.access_token)")
 
         $splatParams = @{
-            CallBackUrl   = $CallBackUrl
-            Headers       = $headers
-            WaitSeconds   = $waitSeconds
+            CallBackUrl = $CallBackUrl
+            Headers     = $headers
+            WaitSeconds = $waitSeconds
         }
 
         switch ($exportData){
@@ -57,28 +57,55 @@ function Get-VismaEmployeeData {
                 $employees = Get-VismaExportData @splatParams | ConvertFrom-Csv
             }
 
+            'employee-udf'{
+                $splatParams['ExportJobName'] = 'employee-user-defined-fields'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/employees/user-defined-field-histories"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/employees/user-defined-field-histories"
+                $employeeUserDefinedFields = Get-VismaExportData @splatParams | ConvertFrom-Csv
+            }
+
             'contracts'{
                 $splatParams['ExportJobName'] = 'contracts'
                 $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts?Exclude - `"fields=rosterid,ptfactor,scaletype_en,scaletype,scale,step,stepname,garscaletype_e,garscaletype,garscal,garstep,garstepname,catsscale,catsscalename,catsscaleid,catsrspfactor,salaryhour,garsalaryhour,salaryhourort,salaryhourtravel,salaryhourextra,salarytype,distance,maxdistance,dayspw,tariffid,tariffname_en,tariffname,publictransportregid,publictransportregname_en,publictransportregname,publictransportunits`""
                 $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/contracts"
                 $contracts = Get-VismaExportData @splatParams | ConvertFrom-Csv
             }
+
+            'contract-udf'{
+                $splatParams['ExportJobName'] = 'contract-user-defined-fields'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts/user-defined-field-histories"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/contracts/user-defined-field-histories"
+                $contractUserDefinedFields = Get-VismaExportData @splatParams | ConvertFrom-Csv
+            }
         }
 
         Write-Verbose 'Combining employee and contract data'
         $lookupContracts = $contracts | Group-Object -Property employeeid -AsHashTable
+        $lookEmployeeUserDefinedFields = $employeeUserDefinedFields | Group-Object -Property employeeid -AsHashTable
+        $lookContractUserDefinedFields = $contractUserDefinedFields | Group-Object -Property employeeid -AsHashTable
 
         foreach ($employee in $employees){
             $contractInScope = $lookupContracts[$employee.employeeid]
+            $employeeFieldsInScope = $lookEmployeeUserDefinedFields[$employee.employeeid]
+            $contractFieldsInScope = $lookContractUserDefinedFields[$employee.employeeid]
+
+            if ($employeeFieldsInScope){
+                $externalId = $employeeFieldsInScope.value
+            } else {
+                $externalId = $employee.employeeid
+            }
 
             if ($contractInScope.count -ge 1){
                 $contractInScope.Foreach({
                     $_ | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $_.employeeid
                 })
-                $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $employee.employeeid
+                $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $externalId
                 $employee | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $employee.formattedname
                 $employee | Add-Member -MemberType NoteProperty -Name 'Contracts' -Value $contractInScope
-
+                $employee | Add-Member -MemberType NoteProperty -Name 'Employee-UDF' -Value $employeeFieldsInScope
+                if ($contractFieldsInScope){
+                    $employee | Add-Member -MemberType NoteProperty -Name 'Contract-UDF' -Value $contractFieldsInScope
+                }
                 $resultList.add($employee)
             }
         }
@@ -162,6 +189,14 @@ function Get-VismaExportData {
             if ($responseUrl.contractFileUris){
                 $result = Invoke-RestMethod -Uri $responseUrl.contractFileUris[0] -Method 'GET'
             }
+
+            if ($responseUrl.employeeUdfHistoryFileUris){
+                $result = Invoke-RestMethod -Uri $responseUrl.employeeUdfHistoryFileUris[0] -Method 'GET'
+            }
+
+            if ($responseUrl.contractUdfHistoryFileUris){
+                $result = Invoke-RestMethod -Uri $responseUrl.contractUdfHistoryFileUris[0] -Method 'GET'
+            }
         } else {
             throw "Could not download export data. Error: $($responseUrl.status)"
         }
@@ -219,7 +254,7 @@ function Resolve-HTTPError {
         [object]$ErrorObject
     )
     process {
-        $HttpErrorObj = [PSCustomObject]@{
+        $httpErrorObj = [PSCustomObject]@{
             FullyQualifiedErrorId = $ErrorObject.FullyQualifiedErrorId
             MyCommand             = $ErrorObject.InvocationInfo.MyCommand
             RequestUri            = $ErrorObject.TargetObject.RequestUri
@@ -227,15 +262,11 @@ function Resolve-HTTPError {
             ErrorMessage          = ''
         }
         if ($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') {
-            $HttpErrorObj.ErrorMessage = $ErrorObject.ErrorDetails.Message
+            $httpErrorObj.ErrorMessage = $ErrorObject.ErrorDetails.Message
         } elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
-            $stream = $ErrorObject.Exception.Response.GetResponseStream()
-            $stream.Position = 0
-            $streamReader = New-Object System.IO.StreamReader $Stream
-            $errorResponse = $StreamReader.ReadToEnd()
-            $HttpErrorObj.ErrorMessage = $errorResponse
+            $httpErrorObj.ErrorMessage = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
         }
-        Write-Output $HttpErrorObj
+        Write-Output $httpErrorObj
     }
 }
 #endregion
