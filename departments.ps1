@@ -1,5 +1,5 @@
 ########################################################################
-# HelloID-Conn-Prov-Source-Raet-Visma-API-Departments
+# HelloID-Conn-Prov-Source-Visma.net-HRM-API-Departments
 #
 # Version: 1.0.0.1
 ########################################################################
