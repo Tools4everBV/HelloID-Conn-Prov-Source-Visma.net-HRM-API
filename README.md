@@ -4,7 +4,7 @@
   <img src="https://www.visma.com/globalassets/global/common-images/logos/vismalogo.svg">
 </p>
 
-> Before implementing this connector, Raet Visma will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented.
+> Before implementing this connector, Visma.NET HRM will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented.
 > See section: _Remarks - EmployeeId is not unique_
 
 ## Table of contents
@@ -31,7 +31,7 @@ Visma is an HR System and provides a set of REST API's that allow you to program
 
 ## Getting started
 
-The _HelloID-Conn-Prov-Source-Raet-Visma-API_ connector is created for both Windows PowerShell 5.1 and PowerShell Core. This means that the connector can be executed in both cloud and on-premises using the HelloID agent.
+The _HelloID-Conn-Prov-Source-Visma.net-HRM-API_ connector is created for both Windows PowerShell 5.1 and PowerShell Core. This means that the connector can be executed in both cloud and on-premises using the HelloID agent.
 
 ### Connection settings
 
@@ -39,11 +39,11 @@ The following settings are required to connect to the API.
 
 | Setting     | Description | Mandatory |
 | ------------ | ----------- | ----------- |
-| BaseUrl | The url to the Raet Visma API | Yes |
+| BaseUrl | The url to the Visma.Net HRM API | Yes |
 | CallBackUrl | With the CallBackUrl the results will be POSTed to the URL specified in your request. | Yes |
 | ClientID | The ClientID to authenticate against the API | Yes |
 | ClientSecret | The ClientSecret to authenticate against the API | Yes |
-| TenantID | The TenantID for your Raet Visma environment| Yes |
+| TenantID | The TenantID for your Visma.Net HRM environment| Yes |
 
 ### Contents
 
@@ -58,8 +58,8 @@ The following settings are required to connect to the API.
 
 ### EmployeeId is not unique
 
-By default, the employeeId within Raet Visma does not contain a unique value. Raet Visma can solve this by adding a custom calculating to generate a
-_uniqueId_. This _uniqueId_ will be stored in a custom field. The field varies for each Raet Visma implementation.
+By default, the employeeId within Visma.Net HRM does not contain a unique value. Visma.Net HRM can solve this by adding a custom calculating to generate a
+_uniqueId_. This _uniqueId_ will be stored in a custom field. The field varies for each Visma.Net HRM implementation.
 This field can be found in the 'Employee-UDF' array in the raw data. By default; the 'value' containing the uniqueId is mapped to the 'ExternalId' of a person.
 
 In our test environment, the _'Employee-UDF'_ array is empty for some employees. When the array is empty, the 'ExternalId' is mapped to the _'employeeid'_ on the employee object.
@@ -72,7 +72,7 @@ if ($employeeFieldsInScope){
 }
 ```
 
-After Raet Visma calculated and generated the custom field, changes will have to be made to the code to accomodate the new field.
+After Visma.Net HRM calculated and generated the custom field, changes will have to be made to the code to accomodate the new field.
 
 1. Currently, a lookup table is created based on the _'employeeid'_. This will have to be changed according to the customer implementation.
 
@@ -102,13 +102,13 @@ After Raet Visma calculated and generated the custom field, changes will have to
     }
     ```
 
-> Before implementing this connector, Raet Visma will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented.
+> Before implementing this connector, Visma.Net HRM will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented.
 
 ### Which data will be imported in HelloID
 
 At this point, only employees _with_ a contract are imported into HelloID.
 
-### Complexity in how data must be retrieved from the Raet Visma API
+### Complexity in how data must be retrieved from the Visma.Net HRM API
 
 The data from Visma must be gathered in five different stages.
 1. Request token
