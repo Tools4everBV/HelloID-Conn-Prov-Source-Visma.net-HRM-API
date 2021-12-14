@@ -1,4 +1,4 @@
-# HelloID-Conn-Prov-Source-Raet-Visma-API
+# HelloID-Conn-Prov-Source-Visma.net-HRM-API
 
 <p align="center">
   <img src="https://www.visma.com/globalassets/global/common-images/logos/vismalogo.svg">
