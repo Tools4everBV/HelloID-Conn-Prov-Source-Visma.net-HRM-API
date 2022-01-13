@@ -66,7 +66,7 @@ function Get-VismaEmployeeData {
 
             'contracts'{
                 $splatParams['ExportJobName'] = 'contracts'
-                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts?Exclude - `"fields=rosterid,ptfactor,scaletype_en,scaletype,scale,step,stepname,garscaletype_e,garscaletype,garscal,garstep,garstepname,catsscale,catsscalename,catsscaleid,catsrspfactor,salaryhour,garsalaryhour,salaryhourort,salaryhourtravel,salaryhourextra,salarytype,distance,maxdistance,dayspw,tariffid,tariffname_en,tariffname,publictransportregid,publictransportregname_en,publictransportregname,publictransportunits`""
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts?fields=!rosterid,ptfactor,scaletype_en,scaletype,scale,step,stepname,garscaletype,garstep,garstepname,catsscale,catsscalename,catsscaleid,catsrspfactor,salaryhour,garsalaryhour,salaryhourort,salaryhourtravel,salaryhourextra,salarytype,distance,maxdistance,dayspw,tariffid,tariffname_en,tariffname,publictransportregid,publictransportregname_en,publictransportregname,publictransportunits"
                 $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/contracts"
                 $contracts = Get-VismaExportData @splatParams | ConvertFrom-Csv
             }
