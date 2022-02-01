@@ -27,7 +27,11 @@ function Get-VismaEmployeeData {
 
         [Parameter(Mandatory)]
         [string]
-        $TenantID
+        $TenantID,
+
+        [Parameter(Mandatory)]
+        [string]
+        $CutOffDays
     )
 
     $waitSeconds = 4
@@ -69,6 +73,7 @@ function Get-VismaEmployeeData {
                 $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts?fields=!rosterid,ptfactor,scaletype_en,scaletype,scale,step,stepname,garscaletype,garstep,garstepname,catsscale,catsscalename,catsscaleid,catsrspfactor,salaryhour,garsalaryhour,salaryhourort,salaryhourtravel,salaryhourextra,salarytype,distance,maxdistance,dayspw,tariffid,tariffname_en,tariffname,publictransportregid,publictransportregname_en,publictransportregname,publictransportunits"
                 $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/contracts"
                 $contracts = Get-VismaExportData @splatParams | ConvertFrom-Csv
+
             }
 
             'contract-udf'{
@@ -79,36 +84,106 @@ function Get-VismaEmployeeData {
             }
         }
 
-        Write-Verbose 'Combining employee and contract data'
+        $lookupEmployees = $employees | Group-Object -Property employeeid -AsHashTable
         $lookupContracts = $contracts | Group-Object -Property employeeid -AsHashTable
         $lookEmployeeUserDefinedFields = $employeeUserDefinedFields | Group-Object -Property employeeid -AsHashTable
         $lookContractUserDefinedFields = $contractUserDefinedFields | Group-Object -Property employeeid -AsHashTable
 
-        foreach ($employee in $employees){
-            $contractInScope = $lookupContracts[$employee.employeeid]
-            $employeeFieldsInScope = $lookEmployeeUserDefinedFields[$employee.employeeid]
-            $contractFieldsInScope = $lookContractUserDefinedFields[$employee.employeeid]
+        $cutoffDate = (get-date).AddDays(-$CutOffDays)
+        $uniqueIDs = @()
 
-            if ($employeeFieldsInScope){
-                $externalId = $employeeFieldsInScope.value
+        $EmployeeUniqueID = $employeeUserDefinedFields | Where-Object { $_.fieldname -eq 'UniqueID'}
+        
+        foreach ($UniqueID in $EmployeeUniqueID){
+            $employeeIDs = @()
+
+            $AllEmployeeIDsFromPerson = $employeeUserDefinedFields | Where-Object { $_.value -eq $uniqueID.value}
+            foreach ($SpecificUniqueID in $AllEmployeeIDsFromPerson){
+                $employeeIDs = $employeeIDs + $($SpecificUniqueID.employeeid)
+            }
+            $employeeIDs = $employeeIDs | sort-object -Descending  
+            
+            if ($employeeIDs.count -gt 1){
+                $employeelookupvalue = $employeeIDs[0]
             } else {
-                $externalId = $employee.employeeid
+                $employeelookupvalue = $employeeIDs
+            }
+            
+
+            $employee = $lookupEmployees[$employeelookupvalue]
+            $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $UniqueID.value -force
+            $employee | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $employee.formattedname -force
+
+            $EmployeeUDFList = [system.collections.generic.list[object]]::new()
+            foreach ($employeeID in $employeeIDs){
+                $EmployeeFieldsInScope = $lookEmployeeUserDefinedFields[$employeeID]
+                $EmployeeUDFList.add($EmployeeFieldsInScope)
             }
 
-            if ($contractInScope.count -ge 1){
-                $contractInScope.Foreach({
-                    $_ | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $_.employeeid
-                })
-                $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $externalId
-                $employee | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $employee.formattedname
-                $employee | Add-Member -MemberType NoteProperty -Name 'Contracts' -Value $contractInScope
-                $employee | Add-Member -MemberType NoteProperty -Name 'Employee-UDF' -Value $employeeFieldsInScope
-                if ($contractFieldsInScope){
-                    $employee | Add-Member -MemberType NoteProperty -Name 'Contract-UDF' -Value $contractFieldsInScope
-                }
-                $resultList.add($employee)
+            $employee | Add-Member -MemberType NoteProperty -Name 'Employee-UDF' -Value $EmployeeUDFList -force
+            $employee = $employee[0]
+
+            $ContractList = [system.collections.generic.list[object]]::new()
+            foreach ($employeeID in $employeeIDs){
+                $contractInScope = $lookupContracts[$employeeID]
+                $ContractList.add($contractInScope)
             }
-        }
+
+            
+            if ($ContractList.count -ge 1){
+                $employee | Add-Member @{ Contracts = [System.Collections.ArrayList]@() } -force
+                Foreach($contract in $ContractList){
+                    $contract = $contract[0]
+                    $em = $contract.Enddate
+
+                    $ActiveCalc = $false
+                    if($em -ne ""){ [datetime]$dt = $contract.Enddate } else {write-verbose -verbose $em}
+                    if($dt -gt $cutoffDate -or $em -eq ""){ $ActiveCalc = $true}
+                    $contractexternalid = $contract.employeeid + "-" + $contract.contractid + "-" + $contract.subcontractid
+
+                    $contract | Add-Member -MemberType NoteProperty -Name 'ActiveCalc' -Value $ActiveCalc -force
+                    $contract | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $contractexternalid -force
+
+                    $contractFieldsInScope = $lookContractUserDefinedFields[$($contract.employeeid)]
+                    
+                   ## Custom -> Location name in SubContractDepartment - Might come in handy for location attributes (For example: TOPdesk Branch)
+                    $Location = ""
+                    if ($contractFieldsInScope){
+                        foreach ($field in $contractFieldsInScope){
+                            if($field.entityname -eq "SubContractDepartment"){
+                                if($field.fieldtypeid -eq "1"){
+                                    $Location = $field.listname
+                                }
+                            }    
+                        }
+                    } 
+
+                   $contract | Add-Member -MemberType NoteProperty -Name 'LocationName' -Value $Location -force
+                   ##
+
+                   if ($contractFieldsInScope){
+                    $contract | Add-Member -MemberType NoteProperty -Name 'Contract-UDF' -Value $contractFieldsInScope -force
+                   } 
+                    
+                   if($contract.ActiveCalc -eq $true){
+                        $employee.Contracts.Add($contract) | Out-Null
+                    }
+
+                    if($uniqueIDs -notcontains $($employee.externalID)){
+                        if($employee.externalid.length -ne 1){
+                                if($employee.Contracts.count -gt 0){
+                                    $resultList.add($employee)
+                                    $uniqueIDs = $uniqueIDs + $($employee.ExternalId)                            
+                                }
+                            }
+                        } else {
+                        write-verbose -verbose "Persoon $($employee.displayName) al verwerkt met eerder UniqueID"
+                    }
+                } 
+            } 
+        
+
+        }        
 
         Write-Verbose 'Importing raw data in HelloID'
         if (-not ($dryRun -eq $true)){
@@ -278,5 +353,6 @@ $splatParams = @{
     ClientID     = $($config.ClientID)
     ClientSecret = $($config.ClientSecret)
     TenantID     = $($config.TenantID)
+    CutOffDays   = $($config.CutOffDays)
 }
 Get-VismaEmployeeData @splatParams
