@@ -170,7 +170,7 @@ In our test environment, the _'Employee-UDF'_ array is empty for some employees.
 
 ### Which data will be imported in HelloID
 
-At this point, only employees _with_ a contracts within scope (CutOffDays) are imported into HelloID.
+At this point, only employees _with_ contracts within scope (CutOffDays) are imported into HelloID.
 
 ### Complexity in how data must be retrieved from the Visma.Net HRM API
 
