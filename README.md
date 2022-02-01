@@ -8,6 +8,10 @@
 |:---------------------------|
 | Before implementing this connector, Visma.NET HRM will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented. See section: _Remarks - EmployeeId is not unique_      |
 
+| :information_source: Information |
+|:---------------------------|
+| Managers are currently not matched when using the API. Visma will implement this in Q1    |
+
 <br />
 
 <p align="center">
@@ -51,6 +55,7 @@ The following settings are required to connect to the API.
 | ClientID | The ClientID to authenticate against the API | Yes |
 | ClientSecret | The ClientSecret to authenticate against the API | Yes |
 | TenantID | The TenantID for your Visma.Net HRM environment| Yes |
+| CutOffDays | Amount of days expired contracts stay in scope | Yes |
 
 ### Contents
 
@@ -69,51 +74,103 @@ By default, the employeeId within Visma.Net HRM does not contain a unique value.
 _uniqueId_. This _uniqueId_ will be stored in a custom field. The field varies for each Visma.Net HRM implementation.
 This field can be found in the 'Employee-UDF' array in the raw data. By default; the 'value' containing the uniqueId is mapped to the 'ExternalId' of a person.
 
-In our test environment, the _'Employee-UDF'_ array is empty for some employees. When the array is empty, the 'ExternalId' is mapped to the _'employeeid'_ on the employee object.
+In our test environment, the _'Employee-UDF'_ array is empty for some employees. When the array is empty, the user will not be imported.
 
-```powershell
-if ($employeeFieldsInScope){
-    $externalId = $employeeFieldsInScope.value
-} else {
-    $externalId = $employee.employeeid
-}
-```
 
-After Visma.Net HRM calculated and generated the custom field, changes will have to be made to the code to accomodate the new field.
-
-1. Currently, a lookup table is created based on the _'employeeid'_. This will have to be changed according to the customer implementation.
+1. Currently, a lookup table is created based on the _'UniqueID'_. We also create a 'processed' UniqueIDs array to make sure users are not imported multiple times
 
     ```powershell
-      $lookupContracts = $contracts | Group-Object -Property employeeid -AsHashTable
+      $uniqueIDs = @()
+      $EmployeeUniqueID = $employeeUserDefinedFields | Where-Object { $_.fieldname -eq 'UniqueID'}
     ```
 
-2. Next, we loop through all employees and find the _contractsInScope_. Or; in other words, find all contracts for a particular employee. The value that will be fed is set to the _employeeid_. This will have to be changed according to the customer implementation.
+2. Next, we loop through all EmployeeIDs and find the Employee info. We use the highest EmployeeID for person info. 
 
     ```powershell
-    foreach ($employee in $employees){
-        $contractInScope = $lookupContracts[$employee.employeeid]
+      foreach ($UniqueID in $EmployeeUniqueID){
+            $employeeIDs = @()
+            $AllEmployeeIDsFromPerson = $employeeUserDefinedFields | Where-Object { $_.value -eq $uniqueID.value}
+            foreach ($SpecificUniqueID in $AllEmployeeIDsFromPerson){
+                $employeeIDs = $employeeIDs + $($SpecificUniqueID.employeeid)
+            }
+            $employeeIDs = $employeeIDs | sort-object -Descending 
+            
+            if ($employeeIDs.count -gt 1){
+                $employeelookupvalue = $employeeIDs[0]
+            } else {
+                $employeelookupvalue = $employeeIDs
+            }
     ```
 
-3. Finally, we add the 'ExternalId' noteproperty on both the contract and employee object. The value for the _ExternalId_ currently is set to the _employeeid_. This will have to be changed according to the customer implementation.
+3. Next, we add the 'ExternalId' noteproperty on the employee object. The value for the _ExternalId_ is set to the _UniqueID_ and EmployeeID will be mapped to a custom field. 
 
     ```powershell
-    if ($contractInScope.count -ge 1){
-        $contractInScope.Foreach({
-            $_ | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $_.employeeid
-        })
-        $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $employee.employeeid
-        $employee | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $employee.formattedname
-        $employee | Add-Member -MemberType NoteProperty -Name 'Contracts' -Value $contractInScope
+            $employee = $lookupEmployees[$employeelookupvalue]
+            $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $UniqueID.value -force
+            $employee | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $employee.formattedname -force
 
-        $resultList.add($employee)
+            $EmployeeUDFList = [system.collections.generic.list[object]]::new()
+            foreach ($employeeID in $employeeIDs){
+                $EmployeeFieldsInScope = $lookEmployeeUserDefinedFields[$employeeID]
+                $EmployeeUDFList.add($EmployeeFieldsInScope)
+            }
+
+            $employee | Add-Member -MemberType NoteProperty -Name 'Employee-UDF' -Value $EmployeeUDFList -force
     }
+    ```
+    
+4. Finally, we add the contracts of each EmployeeID, check if the contracts are within scope and add the person to the resultlist if the UniqueID has not been processed before.
+
+    ```powershell
+      $ContractList = [system.collections.generic.list[object]]::new()
+            foreach ($employeeID in $employeeIDs){
+                $contractInScope = $lookupContracts[$employeeID]
+                $ContractList.add($contractInScope)
+            }
+
+            
+            if ($ContractList.count -ge 1){
+                $employee | Add-Member @{ Contracts = [System.Collections.ArrayList]@() } -force
+                Foreach($contract in $ContractList){
+                    $contract = $contract[0]
+                    $em = $contract.Enddate
+
+                    $ActiveCalc = $false
+                    if($em -ne ""){ [datetime]$dt = $contract.Enddate } else {write-verbose -verbose $em}
+                    if($dt -gt $cutoffDate -or $em -eq ""){ $ActiveCalc = $true}
+                    $contractexternalid = $contract.employeeid + "-" + $contract.contractid + "-" + $contract.subcontractid
+
+                    $contract | Add-Member -MemberType NoteProperty -Name 'ActiveCalc' -Value $ActiveCalc -force
+                    $contract | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $contractexternalid -force
+
+                    $contractFieldsInScope = $lookContractUserDefinedFields[$($contract.employeeid)]
+                    if ($contractFieldsInScope){
+                    $contract | Add-Member -MemberType NoteProperty -Name 'Contract-UDF' -Value $contractFieldsInScope -force
+                   } 
+                    
+                   if($contract.ActiveCalc -eq $true){
+                        $employee.Contracts.Add($contract) | Out-Null
+                    }
+
+                    if($uniqueIDs -notcontains $($employee.externalID)){
+                        if($employee.externalid.length -ne 1){
+                                if($employee.Contracts.count -gt 0){
+                                    $resultList.add($employee)
+                                   #write-output $employee
+                                    $uniqueIDs = $uniqueIDs + $($employee.ExternalId)                            
+                                }
+                            }
+                        } else {
+                        write-verbose -verbose "Persoon $($employee.displayName) al verwerkt met eerder UniqueID"
+                    }
+            }
     ```
 
 > Before implementing this connector, Visma.Net HRM will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented.
 
 ### Which data will be imported in HelloID
 
-At this point, only employees _with_ a contract are imported into HelloID.
+At this point, only employees _with_ a contracts within scope (CutOffDays) are imported into HelloID.
 
 ### Complexity in how data must be retrieved from the Visma.Net HRM API
 
@@ -140,6 +197,8 @@ Now, this works fine on our test environment. However, in a real life environmen
 ## Setup the connector
 
 > Make sure to configure the Primary Manager in HelloID to: __From department of primary contract__
+> Make sure to create a custom field for EmployeeNumber as the ExternalID contains the UniqueID, not the EmployeeNumber. Be sure to configure display names as well
+> Make sure to create a custom field for isManager, this parameter is supplied by Visma and could come in handy for target systems
 
 For help setting up a new source connector, please refer to our [documentation](https://docs.helloid.com/hc/en-us/articles/360012388639-How-to-add-a-source-system)
 
