@@ -20,7 +20,7 @@
       "required": true
     }
   },
-    {
+  {
     "key": "ClientID",
     "type": "input",
     "defaultValue": "",
@@ -36,17 +36,27 @@
     "defaultValue": "",
     "templateOptions": {
       "label": "ClientSecret",
-      "type": "password",
       "required": false
     }
   },
-    {
+  {
     "key": "TenantID",
     "type": "input",
     "defaultValue": "",
     "templateOptions": {
       "label": "TenantID",
       "description": "The TenantID for your Raet Visma environment",
+      "required": true
+    }
+  },
+  {
+    "key": "CutOffDays",
+    "type": "input",
+    "defaultValue": "",
+    "templateOptions": {
+      "label": "Cut off days",
+      "description": "Amount of days expired contracts stay in scope",
+      "placeholder": "60",
       "required": true
     }
   }
