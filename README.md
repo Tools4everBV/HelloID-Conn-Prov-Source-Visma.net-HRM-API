@@ -10,7 +10,7 @@
 
 | :information_source: Information |
 |:---------------------------|
-| Managers are currently not matched when using the API. Visma will implement this in Q1    |
+| Managers are currently not matched when using the API. Visma will implement this in Q1/Q2    |
 
 <br />
 
