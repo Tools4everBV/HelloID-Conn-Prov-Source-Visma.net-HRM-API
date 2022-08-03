@@ -38,7 +38,7 @@ function Get-VismaEmployeeData {
     [System.Collections.Generic.List[object]]$resultList = @()
 
     try {
-        $exportData = @('employees', 'employee-udf', 'contracts', 'contract-udf')
+        $exportData = @('employees', 'employee-udf', 'contracts', 'contract-udf', 'cc', 'users')
 
         Write-Verbose 'Retrieving Visma AccessToken'
         $accessToken = Get-VismaOauthToken -ClientID $ClientID -ClientSecret $ClientSecret -TenantID $TenantID
@@ -61,6 +61,20 @@ function Get-VismaEmployeeData {
                 $employees = Get-VismaExportData @splatParams | ConvertFrom-Csv
             }
 
+            'users'{
+                $splatParams['ExportJobName'] = 'users'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/users"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/users"
+                $users = Get-VismaExportData @splatParams | ConvertFrom-Csv
+            }
+
+            'cc'{
+                $splatParams['ExportJobName'] = 'cc'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/metadata/cost-centers"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/metadata/cost-centers"
+                $cc = Get-VismaExportData @splatParams | ConvertFrom-Csv 
+            }
+
             'employee-udf'{
                 $splatParams['ExportJobName'] = 'employee-user-defined-fields'
                 $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/employees/user-defined-field-histories"
@@ -70,7 +84,7 @@ function Get-VismaEmployeeData {
 
             'contracts'{
                 $splatParams['ExportJobName'] = 'contracts'
-                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts?fields=!rosterid,ptfactor,scaletype_en,scaletype,scale,step,stepname,garscaletype,garstep,garstepname,catsscale,catsscalename,catsscaleid,catsrspfactor,salaryhour,garsalaryhour,salaryhourort,salaryhourtravel,salaryhourextra,salarytype,distance,maxdistance,dayspw,tariffid,tariffname_en,tariffname,publictransportregid,publictransportregname_en,publictransportregname,publictransportunits"
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts?fields=!rosterid,ptfactor,scaletype_en,scaletype,scale,step,stepname,garscaletype,garstep,garstepname,catsscale,catsscalename,catsscaleid,catsrspfactor,salaryhour,garsalaryhour,salaryhourort,salaryhourtravel,salaryhourextra,salarytype,distance,maxdistance,dayspw"
                 $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/contracts"
                 $contracts = Get-VismaExportData @splatParams | ConvertFrom-Csv
 
@@ -85,7 +99,10 @@ function Get-VismaEmployeeData {
         }
 
         $lookupEmployees = $employees | Group-Object -Property employeeid -AsHashTable
+        $lookupEmployeesEmail = $employees | Group-Object -Property businessemailaddress -AsHashTable
         $lookupContracts = $contracts | Group-Object -Property employeeid -AsHashTable
+        $lookupUsers = $users | Group-object -Property emailaddress -AsHashTable
+        $lookupUsersID = $users | Group-object -Property userid -AsHashTable
         $lookEmployeeUserDefinedFields = $employeeUserDefinedFields | Group-Object -Property employeeid -AsHashTable
         $lookContractUserDefinedFields = $contractUserDefinedFields | Group-Object -Property employeeid -AsHashTable
 
@@ -93,6 +110,7 @@ function Get-VismaEmployeeData {
         $uniqueIDs = @()
 
         $EmployeeUniqueID = $employeeUserDefinedFields | Where-Object { $_.fieldname -eq 'UniqueID'}
+        #$EmployeeUniqueID = $EmployeeUniqueID | Where-Object { $_.value -eq '1931951-1000520'}
         
         foreach ($UniqueID in $EmployeeUniqueID){
             $employeeIDs = @()
@@ -113,6 +131,9 @@ function Get-VismaEmployeeData {
             $employee = $lookupEmployees[$employeelookupvalue]
             $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $UniqueID.value -force
             $employee | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $employee.formattedname -force
+
+            $user = $lookupUsers[$($employee.businessemailaddress)]
+            $employee | Add-Member -MemberType NoteProperty -Name 'userid' -Value $User.userid -force
 
             $EmployeeUDFList = [system.collections.generic.list[object]]::new()
             foreach ($employeeID in $employeeIDs){
@@ -146,6 +167,28 @@ function Get-VismaEmployeeData {
 
                     $contractFieldsInScope = $lookContractUserDefinedFields[$($contract.employeeid)]
                     
+                    #Manager lookup via UserID terug naar Employee ID. Moet via een omweg, de userid zit niet in de lookup dus kan hier pas worden herleid
+                    #Visma moet eigenlijk gewoon de userID meegeven op de employees, maar dit krijgen we niet voor elkaar bij ze
+                    if($contract.manageruserid -ne "") { 
+                    
+                    $Contract | Add-Member @{ Manager = [System.Collections.ArrayList]@() } -force
+                    $manager = $lookupUsersID[$($contract.manageruserid)]
+                    
+                    if ( $manager.count -gt 0 ){
+                    $managerEmail = $manager.emailaddress
+
+                    if($managerEmail) {
+                        $manager = $lookupEmployeesEmail[$managerEmail]     
+                        
+                        if($null -ne $manager ){
+                        $ExternalIDMan = $manager.odporgid + "-" + $manager.employeeid
+                        $contract | Add-Member -MemberType NoteProperty -Name 'Manager' -Value $ExternalIDMan -force}
+                    }                  
+
+                    }
+
+                    } 
+
                    ## Custom -> Location name in SubContractDepartment - Might come in handy for location attributes (For example: TOPdesk Branch)
                     $Location = ""
                     if ($contractFieldsInScope){
@@ -159,6 +202,12 @@ function Get-VismaEmployeeData {
                     } 
 
                    $contract | Add-Member -MemberType NoteProperty -Name 'LocationName' -Value $Location -force
+                   
+                    foreach($row in $CC){
+                        if($($contract.costcenter) -eq $row.costcentername){
+                            $contract | Add-Member -MemberType NoteProperty -Name 'Costcentercode' -Value $($row.costcenter) -force
+                       }
+                   }
                    ##
 
                    if ($contractFieldsInScope){
@@ -173,6 +222,7 @@ function Get-VismaEmployeeData {
                         if($employee.externalid.length -ne 1){
                                 if($employee.Contracts.count -gt 0){
                                     $resultList.add($employee)
+                                   #write-output $employee
                                     $uniqueIDs = $uniqueIDs + $($employee.ExternalId)                            
                                 }
                             }
@@ -261,8 +311,16 @@ function Get-VismaExportData {
                 $result = Invoke-RestMethod -Uri $responseUrl.employeeFileUris[0] -Method 'GET'
             }
 
+            if ($responseUrl.usersFileUris){
+                $result = Invoke-RestMethod -Uri $responseUrl.usersFileUris[0] -Method 'GET'
+            }
+
             if ($responseUrl.contractFileUris){
                 $result = Invoke-RestMethod -Uri $responseUrl.contractFileUris[0] -Method 'GET'
+            }
+
+            if ($responseUrl.costCentersFileUris){
+                $result = Invoke-RestMethod -Uri $responseUrl.costCentersFileUris[0] -Method 'GET'
             }
 
             if ($responseUrl.employeeUdfHistoryFileUris){
@@ -299,7 +357,7 @@ function Get-VismaOAuthtoken {
 
     try {
         $body =  @( "grant_type=client_credentials")
-        $body += "scope=hrmanalytics%3Anlhrm%3Aexportemployees%20hrmanalytics%3Anlhrm%3Aexportcontracts%20hrmanalytics%3Anlhrm%3Aexportorganizationunits%20hrmanalytics%3Anlhrm%3Aexportmetadata"
+        $body += "scope=hrmanalytics%3Anlhrm%3Aexportemployees%20hrmanalytics%3Anlhrm%3Aexportcontracts%20hrmanalytics%3Anlhrm%3Aexportorganizationunits%20hrmanalytics%3Anlhrm%3Aexportmetadata%20hrmanalytics%3Anlhrm%3Aexportusers"
         $body += "client_id=$ClientID"
         $body += "client_secret=$ClientSecret"
         $body += "tenant_id=$TenantID"
