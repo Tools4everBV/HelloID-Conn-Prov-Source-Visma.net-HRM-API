@@ -14,12 +14,6 @@
   <img src="https://www.visma.com/globalassets/global/common-images/logos/vismalogo.svg">
 </p>
 
-## Versioning
-| Version | Description | Date |
-| - | - | - |
-| 2.0.0   | Release of v2 connector including support for aggregation, multiple contracts and department manager lookup  | 2022/11/07  |
-| 1.0.0   | Initial release | 2021/10/04  |
-
 ## Table of contents
 
 - [Introduction](#Introduction)
@@ -119,7 +113,6 @@ Now, this works fine on our test environment. However, in a real life environmen
 
 ## Setup the connector
 
-> Make sure to configure the Primary Manager in HelloID to: __From department of primary contract__
 > Make sure to create a custom field for UniqueID that contains the UniqueID. Be sure to configure display names as well
 
 For help setting up a new source connector, please refer to our [documentation](https://docs.helloid.com/hc/en-us/articles/360012388639-How-to-add-a-source-system)
@@ -128,8 +121,8 @@ For help setting up a new source connector, please refer to our [documentation](
 
 | File               | Version | Changes
 | ------------------ | ------- | ----------------|
-| persons.p1         | 2.0.0.0 | <ul><li>Connector now retrieves all information, uses aggregation</li></ul> |
-| departments.p1     | 2.0.0.0 | <ul><li>Connector now retrieves all information, uses aggregation</li></ul> |
+| persons.p1         | 2.0.0.0 | <ul><li>Release of v2 connector including support for aggregation, multiple contracts and department manager lookup</li></ul> |
+| departments.p1     | 2.0.0.0 | <ul><li>Release of v2 connector including support for aggregation, multiple contracts and department manager lookup</li></ul> |
 | persons.p1         | 1.0.0.1 | <ul><li>Added 'user-defined-fields' for both persons and contracts</li><li>Updated errorhandling</li></ul> |
 | departments.p1     | 1.0.0.1 | <ul><li>Updated errorhandling</li></ul> |
 | persons.p1         | 1.0.0.0 | <ul><li>Initial release</li></ul> |
