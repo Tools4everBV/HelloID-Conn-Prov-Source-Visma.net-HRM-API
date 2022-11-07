@@ -95,12 +95,6 @@ A custom field needs to be specified in your HelloID configuration, which will c
 
 ## Remarks
 
-
-
-### Which data will be imported in HelloID
-
-At this point, only employees _with_ contracts within scope (CutOffDays) are imported into HelloID.
-
 ### Complexity in how data must be retrieved from the Visma.Net HRM API
 
 The data from Visma must be gathered in five different stages.
@@ -126,8 +120,7 @@ Now, this works fine on our test environment. However, in a real life environmen
 ## Setup the connector
 
 > Make sure to configure the Primary Manager in HelloID to: __From department of primary contract__
-> Make sure to create a custom field for EmployeeNumber as the ExternalID contains the UniqueID, not the EmployeeNumber. Be sure to configure display names as well
-> Make sure to create a custom field for isManager, this parameter is supplied by Visma and could come in handy for target systems
+> Make sure to create a custom field for UniqueID that contains the UniqueID. Be sure to configure display names as well
 
 For help setting up a new source connector, please refer to our [documentation](https://docs.helloid.com/hc/en-us/articles/360012388639-How-to-add-a-source-system)
 
@@ -135,6 +128,8 @@ For help setting up a new source connector, please refer to our [documentation](
 
 | File               | Version | Changes
 | ------------------ | ------- | ----------------|
+| persons.p1         | 2.0.0.0 | <ul><li>Connector now retrieves all information, uses aggregation</li></ul> |
+| departments.p1     | 2.0.0.0 | <ul><li>Connector now retrieves all information, uses aggregation</li></ul> |
 | persons.p1         | 1.0.0.1 | <ul><li>Added 'user-defined-fields' for both persons and contracts</li><li>Updated errorhandling</li></ul> |
 | departments.p1     | 1.0.0.1 | <ul><li>Updated errorhandling</li></ul> |
 | persons.p1         | 1.0.0.0 | <ul><li>Initial release</li></ul> |
