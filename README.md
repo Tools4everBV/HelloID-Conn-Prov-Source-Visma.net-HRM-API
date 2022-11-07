@@ -6,11 +6,7 @@
 
 | :information_source: Information |
 |:---------------------------|
-| Before implementing this connector, Visma.NET HRM will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented. See section: _Remarks - EmployeeId is not unique_      |
-
-| :information_source: Information |
-|:---------------------------|
-| Managers are currently not matched when using the API. Visma will implement this in Q1/Q2    |
+| Before implementing this connector, Visma.NET HRM will need to calculate and generate a uniqueId. Without this id, this connector cannot be implemented. See section: Getting Started - Visma Unique Identifier_      |
 
 <br />
 
