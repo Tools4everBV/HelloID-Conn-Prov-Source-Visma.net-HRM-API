@@ -1,1 +1,215 @@
-{"personMappings":[{"name":"Contact.Business.Email","mode":"field","value":"businessemailaddress","validation":{"required":false}},{"name":"Custom.EmployeeNumber","mode":"field","value":"employeeid","validation":{"required":true}},{"name":"Custom.isManager","mode":"field","value":"ismanager","validation":{"required":false}},{"name":"Details.Gender","mode":"field","value":"gender","validation":{"required":false}},{"name":"ExternalId","mode":"field","value":"ExternalId","validation":{"required":true}},{"name":"Name.Convention","mode":"complex","value":"function getConv() {\r\n if (source.nameusage == \"Eigen\") {return \"B\"}\r\n if (source.nameusage == \"Part./eig.\") {return \"PB\"}\r\n if (source.nameusage == \"Partner\") {return \"P\"}\r\n if (source.nameusage == \"Eig./Part.\") {return \"PB\"}\r\n\r\n else { return \"B\" }\r\n}\r\n\r\ngetConv()","validation":{"required":true}},{"name":"Name.FamilyName","mode":"field","value":"birthname","validation":{"required":true}},{"name":"Name.FamilyNamePartner","mode":"field","value":"partnername","validation":{"required":false}},{"name":"Name.FamilyNamePartnerPrefix","mode":"field","value":"prefixpartnername","validation":{"required":false}},{"name":"Name.FamilyNamePrefix","mode":"field","value":"prefixbirthname","validation":{"required":false}},{"name":"Name.GivenName","mode":"field","value":"firstname","validation":{"required":true}},{"name":"Name.Initials","mode":"field","value":"initials","validation":{"required":false}},{"name":"Name.NickName","mode":"field","value":"nickname","validation":{"required":false}}],"contractMappings":[{"name":"CostBearer.Name","mode":"field","value":"costunit","validation":{"required":false}},{"name":"CostCenter.Name","mode":"field","value":"costcenter","validation":{"required":false}},{"name":"Department.DisplayName","mode":"field","value":"orgunitname_en","validation":{"required":false}},{"name":"Department.ExternalId","mode":"field","value":"orgunit","validation":{"required":false}},{"name":"Details.HoursPerWeek","mode":"field","value":"weekhoursfixed","validation":{"required":false}},{"name":"EndDate","mode":"field","value":"enddate","validation":{"required":false}},{"name":"ExternalId","mode":"complex","value":"sourceContract.ExternalId","validation":{"required":true}},{"name":"Location.Name","mode":"field","value":"LocationName","validation":{"required":false}},{"name":"StartDate","mode":"field","value":"startdate","validation":{"required":true}},{"name":"Title.ExternalId","mode":"field","value":"functionid","validation":{"required":false}},{"name":"Title.Name","mode":"field","value":"functionname","validation":{"required":false}},{"name":"Type.Code","mode":"field","value":"emptype","validation":{"required":false}},{"name":"Type.Description","mode":"field","value":"emptypename","validation":{"required":false}}]}
+{
+	"personMappings": [
+		{
+			"name": "Aggregation",
+			"mode": "complex",
+			"value": "/* This value is used for automatic person aggregation (if enabled) to suggest aggregation of persons based on similar aggregation values.\r\n* The value will be converted to upper case and all white-spaces and special characters, except single quotes, will be removed.\r\n* This field is limited to 200 characters, empty or null values will exclude the person from suggestions.\r\n*/\r\n\r\nlet customValueField = \"UniqueID\"\r\n\r\nfunction getCustomValue()\r\n{\r\n    let customValue\r\n    if (source.employeeUserDefinedFields !== null) {\r\n        for (const employeeUserDefinedField of source.employeeUserDefinedFields) {\r\n            if(typeof employeeUserDefinedField !== \"undefined\" && typeof employeeUserDefinedField.fieldname !== \"undefined\" && employeeUserDefinedField.fieldname == customValueField)\r\n            {\r\n                customValue = \"'\" + employeeUserDefinedField.value.replace(\"-\",\"'\") + \"'\"\r\n            }\r\n        }\r\n    }\r\n    return customValue\r\n}\r\ngetCustomValue();",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Contact.Business.Email",
+			"mode": "field",
+			"value": "businessemailaddress",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Custom.VismaUniqueId",
+			"mode": "complex",
+			"value": "let customValueField = \"UniqueID\"\r\n\r\nfunction getCustomValue()\r\n{\r\n    let customValue\r\n    if (source.employeeUserDefinedFields !== null) {\r\n        for (const employeeUserDefinedField of source.employeeUserDefinedFields) {\r\n            if(typeof employeeUserDefinedField !== \"undefined\" && typeof employeeUserDefinedField.fieldname !== \"undefined\" && employeeUserDefinedField.fieldname == customValueField)\r\n            {\r\n                customValue = employeeUserDefinedField.value\r\n            }\r\n        }\r\n    }\r\n    return customValue\r\n}\r\ngetCustomValue();",
+			"validation": {
+				"required": true
+			},
+			"convertToString": false
+		},
+		{
+			"name": "Details.Gender",
+			"mode": "field",
+			"value": "gender",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "ExternalId",
+			"mode": "field",
+			"value": "ExternalId",
+			"validation": {
+				"required": true
+			}
+		},
+		{
+			"name": "Name.Convention",
+			"mode": "complex",
+			"value": "function getConv() {\r\n if (source.nameusage == \"Eigen\") {return \"B\"}\r\n if (source.nameusage == \"Part./eig.\") {return \"PB\"}\r\n if (source.nameusage == \"Partner\") {return \"P\"}\r\n if (source.nameusage == \"Eig./Part.\") {return \"PB\"}\r\n\r\n else { return \"B\" }\r\n}\r\n\r\ngetConv()",
+			"validation": {
+				"required": true
+			}
+		},
+		{
+			"name": "Name.FamilyName",
+			"mode": "field",
+			"value": "birthname",
+			"validation": {
+				"required": true
+			}
+		},
+		{
+			"name": "Name.FamilyNamePartner",
+			"mode": "field",
+			"value": "partnername",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Name.FamilyNamePartnerPrefix",
+			"mode": "field",
+			"value": "prefixpartnername",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Name.FamilyNamePrefix",
+			"mode": "field",
+			"value": "prefixbirthname",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Name.GivenName",
+			"mode": "field",
+			"value": "firstname",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Name.Initials",
+			"mode": "field",
+			"value": "initials",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Name.NickName",
+			"mode": "field",
+			"value": "nickname",
+			"validation": {
+				"required": false
+			}
+		}
+	],
+	"contractMappings": [
+		{
+			"name": "CostBearer.Name",
+			"mode": "field",
+			"value": "costunit",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "CostCenter.Name",
+			"mode": "field",
+			"value": "costcenter",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Department.DisplayName",
+			"mode": "field",
+			"value": "orgunitname_en",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Department.ExternalId",
+			"mode": "field",
+			"value": "orgunit",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Details.HoursPerWeek",
+			"mode": "field",
+			"value": "weekhoursfixed",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "EndDate",
+			"mode": "field",
+			"value": "enddate",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "ExternalId",
+			"mode": "complex",
+			"value": "sourceContract.odporgid\r\n+ '_' +sourceContract.employeeid\r\n+ '_' + sourceContract.contractid\r\n+ '_' + sourceContract.subcontractid",
+			"validation": {
+				"required": true
+			}
+		},
+		{
+			"name": "Manager.ExternalId",
+			"mode": "field",
+			"value": "ManagerId",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "StartDate",
+			"mode": "field",
+			"value": "startdate",
+			"validation": {
+				"required": true
+			}
+		},
+		{
+			"name": "Title.ExternalId",
+			"mode": "field",
+			"value": "functionid",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Title.Name",
+			"mode": "field",
+			"value": "functionname",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Type.Code",
+			"mode": "field",
+			"value": "emptype",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Type.Description",
+			"mode": "field",
+			"value": "emptypename",
+			"validation": {
+				"required": false
+			}
+		}
+	]
+}

@@ -36,7 +36,8 @@
     "defaultValue": "",
     "templateOptions": {
       "label": "ClientSecret",
-      "required": false
+      "type": "password",
+      "required": true
     }
   },
   {
@@ -50,14 +51,13 @@
     }
   },
   {
-    "key": "CutOffDays",
-    "type": "input",
-    "defaultValue": "",
+    "key": "IsDebug",
+    "type": "checkbox",
+    "defaultValue": true,
     "templateOptions": {
-      "label": "Cut off days",
-      "description": "Amount of days expired contracts stay in scope",
-      "placeholder": "60",
-      "required": true
+      "label": "Toggle debug logging",
+      "description": "When toggled, debug logging will be displayed",
+      "required": false
     }
   }
 ]

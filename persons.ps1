@@ -1,12 +1,17 @@
 ########################################################################
 # HelloID-Conn-Prov-Source-Visma.net-HRM-API-Persons
 #
-# Version: 1.0.0.1
+# Version: 2.0.0.0
 ########################################################################
-$VerbosePreference = "Continue"
+
+# Set debug logging
+switch ($($config.IsDebug)) {
+    $true { $VerbosePreference = 'Continue' }
+    $false { $VerbosePreference = 'SilentlyContinue' }
+}
 
 #region functions
-function Get-VismaEmployeeData {
+function Get-VismaData {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -27,24 +32,19 @@ function Get-VismaEmployeeData {
 
         [Parameter(Mandatory)]
         [string]
-        $TenantID,
-
-        [Parameter(Mandatory)]
-        [string]
-        $CutOffDays
+        $TenantID
     )
 
     $waitSeconds = 4
     [System.Collections.Generic.List[object]]$resultList = @()
 
     try {
-        $exportData = @('employees', 'employee-udf', 'contracts', 'contract-udf', 'cc', 'users')
+        $exportData = @('employees', 'employee-udf', 'contracts', 'contract-udf', 'cost-centers', 'users')
 
         Write-Verbose 'Retrieving Visma AccessToken'
         $accessToken = Get-VismaOauthToken -ClientID $ClientID -ClientSecret $ClientSecret -TenantID $TenantID
 
-        Write-Verbose 'Adding Authorization headers'
-        $headers = New-Object 'System.Collections.Generic.Dictionary[[String], [String]]'
+        $headers = [System.Collections.Generic.Dictionary[string, string]]::new()
         $headers.Add('Authorization', "Bearer $($AccessToken.access_token)")
 
         $splatParams = @{
@@ -58,199 +58,128 @@ function Get-VismaEmployeeData {
                 $splatParams['ExportJobName'] = 'employees'
                 $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/employees"
                 $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/employees"
-                $employees = Get-VismaExportData @splatParams | ConvertFrom-Csv
-            }
-
-            'users'{
-                $splatParams['ExportJobName'] = 'users'
-                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/users"
-                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/users"
-                $users = Get-VismaExportData @splatParams | ConvertFrom-Csv
-            }
-
-            'cc'{
-                $splatParams['ExportJobName'] = 'cc'
-                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/metadata/cost-centers"
-                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/metadata/cost-centers"
-                $cc = Get-VismaExportData @splatParams | ConvertFrom-Csv 
+                $employeeList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded employees: $($employeeList.count)"  -Verbose
             }
 
             'employee-udf'{
                 $splatParams['ExportJobName'] = 'employee-user-defined-fields'
                 $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/employees/user-defined-field-histories"
                 $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/employees/user-defined-field-histories"
-                $employeeUserDefinedFields = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                $employeeUserDefinedFieldList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded employeeUserDefinedFields: $($employeeUserDefinedFieldList.count)" -Verbose
             }
 
             'contracts'{
                 $splatParams['ExportJobName'] = 'contracts'
                 $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts?fields=!rosterid,ptfactor,scaletype_en,scaletype,scale,step,stepname,garscaletype,garstep,garstepname,catsscale,catsscalename,catsscaleid,catsrspfactor,salaryhour,garsalaryhour,salaryhourort,salaryhourtravel,salaryhourextra,salarytype,distance,maxdistance,dayspw"
                 $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/contracts"
-                $contracts = Get-VismaExportData @splatParams | ConvertFrom-Csv
-
+                $contractList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded contracts: $($contractList.count)" -Verbose
             }
 
             'contract-udf'{
                 $splatParams['ExportJobName'] = 'contract-user-defined-fields'
                 $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/contracts/user-defined-field-histories"
                 $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/contracts/user-defined-field-histories"
-                $contractUserDefinedFields = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                $contractUserDefinedFieldList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded contractUserDefinedFields: $($contractUserDefinedFieldList.count)" -Verbose
+            }
+
+            'cost-centers'{
+                $splatParams['ExportJobName'] = 'cc'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/metadata/cost-centers"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/metadata/cost-centers"
+                $costcenterList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded cc: $($costcenterList.count)" -Verbose
+            }
+
+            'users'{
+                $splatParams['ExportJobName'] = 'users'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/users"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/users"
+                $userList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded users: $($userList.count)" -Verbose
             }
         }
 
-        $lookupEmployees = $employees | Group-Object -Property employeeid -AsHashTable
-        $lookupEmployeesEmail = $employees | Group-Object -Property businessemailaddress -AsHashTable
-        $lookupContracts = $contracts | Group-Object -Property employeeid -AsHashTable
-        $lookupUsers = $users | Group-object -Property emailaddress -AsHashTable
-        $lookupUsersID = $users | Group-object -Property userid -AsHashTable
-        $lookEmployeeUserDefinedFields = $employeeUserDefinedFields | Group-Object -Property employeeid -AsHashTable
-        $lookContractUserDefinedFields = $contractUserDefinedFields | Group-Object -Property employeeid -AsHashTable
+        $employeeList | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $null -force
+        $employeeList | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $null -force
+        $employeeList | Add-Member -MemberType NoteProperty -Name 'Contracts' -Value $null -force
+        $employeeList | Add-Member -MemberType NoteProperty -Name 'employeeUserDefinedFields' -Value $null -force
+        $employeeList | Add-Member -MemberType NoteProperty -Name 'uniqueID' -Value $null -force
+        $employeeList | Add-Member -MemberType NoteProperty -Name 'userid' -Value $null -force
 
-        $cutoffDate = (get-date).AddDays(-$CutOffDays)
-        $uniqueIDs = @()
+        $contractList | Add-Member -MemberType NoteProperty -Name 'ManagerId' -Value $null -force
+        $contractList | Add-Member -MemberType NoteProperty -Name 'costcenterCode' -Value $null -force
 
-        $EmployeeUniqueID = $employeeUserDefinedFields | Where-Object { $_.fieldname -eq 'UniqueID'}
-        #$EmployeeUniqueID = $EmployeeUniqueID | Where-Object { $_.value -eq '1931951-1000520'}
-        
-        foreach ($UniqueID in $EmployeeUniqueID){
-            $employeeIDs = @()
+        $lookupEmployeesEmail = $employeeList | Group-Object -Property businessemailaddress -AsHashTable
+        $lookupContracts = $contractList | Group-Object -Property employeeid -AsHashTable
+        $lookupUsersEmail = $userList | Group-object -Property emailaddress -AsHashTable
+        $lookupUsersId = $userList | Group-object -Property userid -AsHashTable
+        $lookEmployeeUserDefinedFields = $employeeUserDefinedFieldList | Group-Object -Property employeeid -AsHashTable
+        #$lookContractUserDefinedFields = $contractUserDefinedFieldList | Group-Object -Property contractIdofZoiets... -AsHashTable
+        $lookupCostcenters = $costcenterList | Group-Object -Property costcentername -AsHashTable
 
-            $AllEmployeeIDsFromPerson = $employeeUserDefinedFields | Where-Object { $_.value -eq $uniqueID.value}
-            foreach ($SpecificUniqueID in $AllEmployeeIDsFromPerson){
-                $employeeIDs = $employeeIDs + $($SpecificUniqueID.employeeid)
-            }
-            $employeeIDs = $employeeIDs | sort-object -Descending  
-            
-            if ($employeeIDs.count -gt 1){
-                $employeelookupvalue = $employeeIDs[0]
-            } else {
-                $employeelookupvalue = $employeeIDs
-            }
-            
+        foreach ($employee in $employeeList) {
+            $employee.ExternalId = $employee.employeeId
+            $employee.DisplayName = "$($employee.formattedname) ($($employee.employeeId))"
+            $employee.employeeUserDefinedFields = $lookEmployeeUserDefinedFields[$employee.employeeId]
 
-            $employee = $lookupEmployees[$employeelookupvalue]
-            $employee | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $UniqueID.value -force
-            $employee | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $employee.formattedname -force
-
-            $user = $lookupUsers[$($employee.businessemailaddress)]
-            $employee | Add-Member -MemberType NoteProperty -Name 'userid' -Value $User.userid -force
-
-            $EmployeeUDFList = [system.collections.generic.list[object]]::new()
-            foreach ($employeeID in $employeeIDs){
-                $EmployeeFieldsInScope = $lookEmployeeUserDefinedFields[$employeeID]
-                $EmployeeUDFList.add($EmployeeFieldsInScope)
+            if (-Not [string]::IsNullOrEmpty($employee.businessemailaddress)) {
+                $employee.userId = $lookupUsersEmail[$($employee.businessemailaddress)].userid
             }
 
-            $employee | Add-Member -MemberType NoteProperty -Name 'Employee-UDF' -Value $EmployeeUDFList -force
-            $employee = $employee[0]
+            $contractsEmployee = $lookupContracts[$employee.employeeId]
+            [System.Collections.Generic.List[object]]$resultContractList = @()
 
-            $ContractList = [system.collections.generic.list[object]]::new()
-            foreach ($employeeID in $employeeIDs){
-                $contractInScope = $lookupContracts[$employeeID]
-                $ContractList.add($contractInScope)
-            }
-
-            
-            if ($ContractList.count -ge 1){
-                $employee | Add-Member @{ Contracts = [System.Collections.ArrayList]@() } -force
-                Foreach($contract in $ContractList){
-                    $contract = $contract[0]
-                    $em = $contract.Enddate
-
-                    $ActiveCalc = $false
-                    if($em -ne ""){ [datetime]$dt = $contract.Enddate } else {write-verbose -verbose $em}
-                    if($dt -gt $cutoffDate -or $em -eq ""){ $ActiveCalc = $true}
-                    $contractexternalid = $contract.employeeid + "-" + $contract.contractid + "-" + $contract.subcontractid
-
-                    $contract | Add-Member -MemberType NoteProperty -Name 'ActiveCalc' -Value $ActiveCalc -force
-                    $contract | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $contractexternalid -force
-
-                    $contractFieldsInScope = $lookContractUserDefinedFields[$($contract.employeeid)]
-                    
-                    #Manager lookup via UserID terug naar Employee ID. Moet via een omweg, de userid zit niet in de lookup dus kan hier pas worden herleid
-                    #Visma moet eigenlijk gewoon de userID meegeven op de employees, maar dit krijgen we niet voor elkaar bij ze
-                    if($contract.manageruserid -ne "") { 
-                    
-                    $Contract | Add-Member @{ Manager = [System.Collections.ArrayList]@() } -force
-                    $manager = $lookupUsersID[$($contract.manageruserid)]
-                    
-                    if ( $manager.count -gt 0 ){
-                    $managerEmail = $manager.emailaddress
-
-                    if($managerEmail) {
-                        $manager = $lookupEmployeesEmail[$managerEmail]     
-                        
-                        if($null -ne $manager ){
-                        $ExternalIDMan = $manager.odporgid + "-" + $manager.employeeid
-                        $contract | Add-Member -MemberType NoteProperty -Name 'Manager' -Value $ExternalIDMan -force}
-                    }                  
-
-                    }
-
-                    } 
-
-                   ## Custom -> Location name in SubContractDepartment - Might come in handy for location attributes (For example: TOPdesk Branch)
-                    $Location = ""
-                    if ($contractFieldsInScope){
-                        foreach ($field in $contractFieldsInScope){
-                            if($field.entityname -eq "SubContractDepartment"){
-                                if($field.fieldtypeid -eq "1"){
-                                    $Location = $field.listname
-                                }
-                            }    
-                        }
-                    } 
-
-                   $contract | Add-Member -MemberType NoteProperty -Name 'LocationName' -Value $Location -force
-                   
-                    foreach($row in $CC){
-                        if($($contract.costcenter) -eq $row.costcentername){
-                            $contract | Add-Member -MemberType NoteProperty -Name 'Costcentercode' -Value $($row.costcenter) -force
-                       }
-                   }
-                   ##
-
-                   if ($contractFieldsInScope){
-                    $contract | Add-Member -MemberType NoteProperty -Name 'Contract-UDF' -Value $contractFieldsInScope -force
-                   } 
-                    
-                   if($contract.ActiveCalc -eq $true){
-                        $employee.Contracts.Add($contract) | Out-Null
-                    }
-
-                    if($uniqueIDs -notcontains $($employee.externalID)){
-                        if($employee.externalid.length -ne 1){
-                                if($employee.Contracts.count -gt 0){
-                                    $resultList.add($employee)
-                                   #write-output $employee
-                                    $uniqueIDs = $uniqueIDs + $($employee.ExternalId)                            
-                                }
+            foreach ($contract in $contractsEmployee) {
+                # Lookup manager
+                # Manager lookup via UserID terug naar Employee ID. Moet via een omweg, de userid zit niet in de lookup dus kan hier pas worden herleid
+                # Visma moet eigenlijk gewoon de userID meegeven op de employees, maar dit krijgen we (nog) niet voor elkaar bij ze
+                if($contract.manageruserid -ne "") {
+                    $managerObject = $lookupUsersId[$($contract.manageruserid)]
+                    if ($managerObject.count -gt 0) {
+                        if (-Not [string]::IsNullOrEmpty($managerObject.emailaddress)) {
+                            $managerEmployeeRecord = $lookupEmployeesEmail[$managerObject.emailaddress]
+                            if($null -ne $managerEmployeeRecord ) {
+                                $contract.ManagerId = $managerEmployeeRecord.employeeId
+                            } else {
+                                Write-Verbose "[$($employee.DisplayName)] Employee record for manager with email [$($managerObject.emailaddress)] not found" -Verbose
                             }
                         } else {
-                        write-verbose -verbose "Persoon $($employee.displayName) al verwerkt met eerder UniqueID"
-                    }
-                } 
-            } 
-        
+                            Write-Verbose "[$($employee.DisplayName)] Email address for manager with userid [$($contract.manageruserid)] is empty" -Verbose
+                        }
+                   } else {
+                        Write-Verbose "[$($employee.DisplayName)] Manager user with userid [$($contract.manageruserid)] is not found" -Verbose
+                   }
+                }
+                $contract.costcenterCode = $lookupCostcenters[$contract.costcenter].costcenter
 
-        }        
+                #klant heeft geen custom contract velden
+                #$contractFieldsInScope = $lookContractUserDefinedFields[$lookupValue)]
 
+                $resultContractList.add($contract)
+            }
+            $employee.contracts = $resultContractList
+            $resultList.add($employee)
+        }
         Write-Verbose 'Importing raw data in HelloID'
         if (-not ($dryRun -eq $true)){
-            Write-Verbose "[Full import] importing '$($resultList.count)' persons"
+            Write-Verbose "[Full import] importing '$($resultList.count)' persons"  -Verbose
             Write-Output $resultList | ConvertTo-Json -Depth 10
         } else {
             Write-Verbose "[Preview] importing '$($resultList.count)' persons"
-            Write-Output $resultList[1..2] | ConvertTo-Json -Depth 10
+            Write-Output $resultList[1..10] | ConvertTo-Json -Depth 10
         }
     } catch {
         $ex = $PSItem
         if ( $($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
             $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
             $errorMessage = Resolve-HTTPError -Error $ex
-            Write-Verbose "Could not retrieve Visma employees. Error: $errorMessage"
+            Write-Verbose "Line 253: Could not retrieve Visma employees. Error: $errorMessage" -Verbose
         } else {
-            Write-Verbose "Could not retrieve Visma employees. Error: $($ex.Exception.Message)"
+            Write-Verbose "Line 255: Could not retrieve Visma employees. Error: $($ex.Exception.Message) $($ex.ScriptStackTrace)" -Verbose
         }
     }
 }
@@ -284,7 +213,7 @@ function Get-VismaExportData {
     )
 
     try {
-        Write-Verbose " Requesting jobId for export '$ExportJobName'"
+        Write-Verbose "Requesting jobId for export '$ExportJobName'"
         $splatResponseJobParams = @{
             Method      = 'POST'
             Uri         = $RequestUri
@@ -411,6 +340,5 @@ $splatParams = @{
     ClientID     = $($config.ClientID)
     ClientSecret = $($config.ClientSecret)
     TenantID     = $($config.TenantID)
-    CutOffDays   = $($config.CutOffDays)
 }
-Get-VismaEmployeeData @splatParams
+Get-VismaData @splatParams

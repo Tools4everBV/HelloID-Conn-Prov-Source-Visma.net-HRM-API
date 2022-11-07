@@ -1,12 +1,17 @@
 ########################################################################
 # HelloID-Conn-Prov-Source-Visma.net-HRM-API-Departments
 #
-# Version: 1.0.0.1
+# Version: 2.0.0.0
 ########################################################################
-$VerbosePreference = "Continue"
+
+# Set debug logging
+switch ($($config.IsDebug)) {
+    $true { $VerbosePreference = 'Continue' }
+    $false { $VerbosePreference = 'SilentlyContinue' }
+}
 
 #region functions
-function Get-VismaDepartmentData {
+function Get-VismaData {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -31,47 +36,97 @@ function Get-VismaDepartmentData {
     )
 
     $waitSeconds = 4
-    [System.Collections.Generic.List[object]]$resultList = @()
 
     try {
+        $exportData = @(  'organizational-units','employees','users')
         Write-Verbose 'Retrieving Visma AccessToken'
         $accessToken = Get-VismaOauthToken -ClientID $ClientID -ClientSecret $ClientSecret -TenantID $TenantID
 
-        Write-Verbose 'Adding Authorization headers'
-        $headers = New-Object 'System.Collections.Generic.Dictionary[[String], [String]]'
+        #Write-Verbose 'Adding Authorization headers'
+        $headers = [System.Collections.Generic.Dictionary[string, string]]::new()
         $headers.Add('Authorization', "Bearer $($AccessToken.access_token)")
 
         $splatParams = @{
-            CallBackUrl   = $CallBackUrl
-            ExportJobName = 'organizational-units'
-            RequestUri    = "$BaseUrl/v1/command/nl/hrm/metadata/organization-units"
-            QueryUri      = "$BaseUrl/v1/query/nl/hrm/metadata/organization-units"
-            Headers       = $headers
-            WaitSeconds   = $waitSeconds
+            CallBackUrl = $CallBackUrl
+            Headers     = $headers
+            WaitSeconds = $waitSeconds
         }
-        $orgUnits = Get-VismaExportData @splatParams | ConvertFrom-Csv
+        switch ($exportData){
+            'organizational-units'{
+                $splatParams['ExportJobName'] = 'organizational-units'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/metadata/organization-units"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/metadata/organization-units"
+                $organizationalUnitList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded organizational-units: $($organizationalUnitList.count)" -Verbose
+            }
 
-        foreach ($orgUnit in $orgUnits){
-            $orgUnit | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $orgUnit.orgunitid
-            $orgUnit | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $orgUnit.orgname
+            'employees'{
+                $splatParams['ExportJobName'] = 'employees'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/employees"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/employees"
+                $employeeList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded employees: $($employeeList.count)" -Verbose
+            }
+
+            'users'{
+                $splatParams['ExportJobName'] = 'users'
+                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/users"
+                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/users"
+                $userList = Get-VismaExportData @splatParams | ConvertFrom-Csv
+                Write-Verbose "Downloaded users: $($userList.count)" -Verbose
+            }
         }
 
+        $organizationalUnitList | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $null -force
+        $organizationalUnitList | Add-Member -MemberType NoteProperty -Name 'Name' -Value $null -force
+        $organizationalUnitList | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $null -force
+        $organizationalUnitList | Add-Member -MemberType NoteProperty -Name 'ManagerExternalId' -Value $null -force
+
+        $lookupUsersId = $userList | Group-object -Property userid -AsHashTable
+        $lookupEmployeesEmail = $employeeList | Group-Object -Property businessemailaddress -AsHashTable
+
+        foreach ($organizationalUnit in $organizationalUnitList){
+            $organizationalUnit.ExternalId = $organizationalUnit.orgunitid
+            $organizationalUnit.Name = $organizationalUnit.orgname
+            $organizationalUnit.DisplayName = $organizationalUnit.orgname
+
+            if (-Not [string]::IsNullOrEmpty($organizationalUnit.manageruserid)) {
+                $managerObject = $lookupUsersId[$($organizationalUnit.manageruserid)]
+                if ($managerObject.count -gt 0) {
+                    if (-Not [string]::IsNullOrEmpty($managerObject.emailaddress)) {
+                        $managerEmployeeRecord = $lookupEmployeesEmail[$managerObject.emailaddress]
+                        if($null -ne $managerEmployeeRecord ) {
+                            $organizationalUnit.ManagerExternalId = $managerEmployeeRecord.employeeId
+                        } else {
+                            Write-Verbose "[$($organizationalUnit.ExternalId)] Employee record for manager with email [$($managerObject.emailaddress)] not found" -Verbose
+                        }
+                    } else {
+                        Write-Verbose "[$($organizationalUnit.ExternalId)] Email address for manager with userid [$($organizationalUnit.manageruserid)] is empty" -Verbose
+                    }
+                } else {
+                    Write-Verbose "[$($organizationalUnit.ExternalId)] User record for manager with userid [$($organizationalUnit.ManagerExternalId)] not found" -Verbose
+                }
+            } else {
+                Write-Verbose "[$($organizationalUnit.ExternalId)] No manager configured" -Verbose
+            }
+        } # foreach
         Write-Verbose 'Importing raw data in HelloID'
         if (-not ($dryRun -eq $true)){
-            Write-Verbose "[Full import] importing '$($orgUnits.count)' departments"
-            Write-Output $orgUnits | ConvertTo-Json -Depth 10
+            Write-Verbose "[Full import] importing '$($organizationalUnitList.count)' departments"
+            Write-Output $organizationalUnitList | ConvertTo-Json -Depth 10
         } else {
-            Write-Verbose "[Preview] importing '$($orgUnits.count)' departments"
-            Write-Output $orgUnits[1..2] | ConvertTo-Json -Depth 10
+            Write-Verbose "[Preview] importing '$($organizationalUnitList.count)' departments"
+            Write-Output $organizationalUnitList[1..10] | ConvertTo-Json -Depth 10
         }
     } catch {
         $ex = $PSItem
+
         if ( $($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
             $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
             $errorMessage = Resolve-HTTPError -Error $ex
-            Write-Verbose "Could not retrieve Visma departments. Error: $errorMessage"
+            Write-Verbose "Could not retrieve Visma departments. Error: $errorMessage" -Verbose
         } else {
-            Write-Verbose "Could not retrieve Visma departments. Error: $($ex.Exception.Message)"
+            Write-Verbose "Could not retrieve Visma departments. Error: $($ex.Exception.Message)" -Verbose
         }
     }
 }
@@ -105,7 +160,8 @@ function Get-VismaExportData {
     )
 
     try {
-        Write-Verbose " Requesting jobId for export '$ExportJobName'"
+        Write-Verbose "Requesting jobId for export '$ExportJobName'"
+
         $splatResponseJobParams = @{
             Method      = 'POST'
             Uri         = $RequestUri
@@ -128,8 +184,17 @@ function Get-VismaExportData {
 
         if ($responseUrl.status -eq 'Completed'){
             Write-Verbose "Downloading '$ExportJobName' data"
+
             if ($responseUrl.organizationUnitsFileUris){
                 $result = Invoke-RestMethod -Uri $responseUrl.organizationUnitsFileUris[0] -Method 'GET'
+            }
+
+            if ($responseUrl.employeeFileUris){
+                $result = Invoke-RestMethod -Uri $responseUrl.employeeFileUris[0] -Method 'GET'
+            }
+
+            if ($responseUrl.usersFileUris){
+                $result = Invoke-RestMethod -Uri $responseUrl.usersFileUris[0] -Method 'GET'
             }
         } else {
             throw "Could not download export data. Error: $($responseUrl.status)"
@@ -158,7 +223,7 @@ function Get-VismaOAuthtoken {
 
     try {
         $body =  @( "grant_type=client_credentials")
-        $body += "scope=hrmanalytics%3Anlhrm%3Aexportemployees%20hrmanalytics%3Anlhrm%3Aexportcontracts%20hrmanalytics%3Anlhrm%3Aexportorganizationunits%20hrmanalytics%3Anlhrm%3Aexportmetadata"
+        $body += "scope=hrmanalytics%3Anlhrm%3Aexportemployees%20hrmanalytics%3Anlhrm%3Aexportorganizationunits%20hrmanalytics%3Anlhrm%3Aexportmetadata%20hrmanalytics%3Anlhrm%3Aexportusers"
         $body += "client_id=$ClientID"
         $body += "client_secret=$ClientSecret"
         $body += "tenant_id=$TenantID"
@@ -213,4 +278,4 @@ $splatParams = @{
     ClientSecret = $($config.ClientSecret)
     TenantID     = $($config.TenantID)
 }
-Get-VismaDepartmentData @splatParams
+Get-VismaData @splatParams
