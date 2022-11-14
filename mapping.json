@@ -102,7 +102,7 @@
 			"mode": "field",
 			"value": "nickname",
 			"validation": {
-				"required": false
+				"required": true
 			}
 		}
 	],
@@ -167,6 +167,22 @@
 			"name": "Manager.ExternalId",
 			"mode": "field",
 			"value": "ManagerId",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Organization.ExternalId",
+			"mode": "complex",
+			"value": "source.companyid",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Organization.Name",
+			"mode": "complex",
+			"value": "source.companyname",
 			"validation": {
 				"required": false
 			}
