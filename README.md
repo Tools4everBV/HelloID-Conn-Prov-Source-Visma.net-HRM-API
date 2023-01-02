@@ -50,6 +50,12 @@ Before the connector can be used to retrieve employee information, the following
 
 Note: If one of the scopes is missing, the connector will throw a '401 Unauthorized' exception 
 
+**Optional:**
+
+- hrmanalytics:nlhrm:exportcontactinformation
+
+to retrieve personal data like private mailaddress, make sure to add 'hrmanalytics%3Anlhrm%3Aexportcontactinformation' to the body of the function "Get-VismaOAuthtoken"
+
 ### Visma Unique Identifier
 
 By default, for each contract Visma creates a new employee record (with a new employeeID) To make aggregation easier, Visma.Net HRM adds a custom calculating to generate a _uniqueId_. This _uniqueId_ will be stored in a custom employee field with the name UniqueID. This field can be found in the 'Employee-UDF' array in the raw data. By default; the 'value' containing the uniqueId is mapped to a custom field 'Custom.UniqueID' of a person and is used for person aggregation.
