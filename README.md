@@ -38,7 +38,10 @@ Visma is an HR System and provides a set of REST API's that allow you to program
 
 ## Visma.net HRM documentation
 Please see the following website about the Visma.net HRM API documentation.
+- https://developer.visma.com/api/visma-net-hrm-payroll-api/
 - https://api.analytics1.hrm.visma.net/docs/openapi.html
+
+
 ## Getting started
 By using this connector you will have the ability to retrieve employee and contract data from the Visma.NET HR system.
 
