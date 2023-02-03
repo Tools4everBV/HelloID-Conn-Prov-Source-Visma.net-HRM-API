@@ -11,7 +11,7 @@
 <br />
 
 <p align="center">
-  <img src="https://www.visma.com/globalassets/global/common-images/logos/vismalogo.svg">
+  <img src="https://user-images.githubusercontent.com/69046642/216682928-74db2a4b-bb53-4af0-9f15-087bf3da2486.png">
 </p>
 
 ## Table of contents
