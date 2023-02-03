@@ -1,63 +1,62 @@
 [
   {
-    "key": "BaseUrl",
-    "type": "input",
-    "defaultValue": "",
-    "templateOptions": {
-      "label": "BaseUrl",
-      "placeholder": "https://api.analytics1.hrm.visma.net",
-      "description": "The url to the Raet Visma API",
-      "required": true
-    }
+      "key": "ClientID",
+      "type": "input",
+      "defaultValue": "",
+      "templateOptions": {
+          "label": "ClientID",
+          "description": "The ClientID to authenticate against the API",
+          "required": true
+      }
   },
   {
-    "key": "CallBackUrl",
-    "type": "input",
-    "defaultValue": "",
-    "templateOptions": {
-      "label": "CallBackUrl",
-      "description": "With the CallBackUrl the results will be posted to the URL specified in your request.",
-      "required": true
-    }
+      "key": "ClientSecret",
+      "type": "input",
+      "defaultValue": "",
+      "templateOptions": {
+          "label": "ClientSecret",
+          "type": "password",
+          "required": true
+      }
   },
   {
-    "key": "ClientID",
-    "type": "input",
-    "defaultValue": "",
-    "templateOptions": {
-      "label": "ClientID",
-      "description": "The ClientID to authenticate against the API",
-      "required": true
-    }
+      "key": "TenantID",
+      "type": "input",
+      "defaultValue": "",
+      "templateOptions": {
+          "label": "TenantID",
+          "description": "The TenantID for your Raet Visma environment",
+          "required": true
+      }
   },
   {
-    "key": "ClientSecret",
-    "type": "input",
-    "defaultValue": "",
-    "templateOptions": {
-      "label": "ClientSecret",
-      "type": "password",
-      "required": true
-    }
+      "key": "CutOffDays",
+      "type": "input",
+      "defaultValue": "",
+      "templateOptions": {
+          "label": "Cut off days",
+          "description": "Amount of days expired contracts stay in scope",
+          "placeholder": "90",
+          "required": true
+      }
   },
   {
-    "key": "TenantID",
-    "type": "input",
-    "defaultValue": "",
-    "templateOptions": {
-      "label": "TenantID",
-      "description": "The TenantID for your Raet Visma environment",
-      "required": true
-    }
+      "key": "ExcludePersonsWithoutContractsInHelloID",
+      "type": "checkbox",
+      "defaultValue": true,
+      "templateOptions": {
+          "label": "Exclude persons without contracts in HelloID",
+          "required": false
+      }
   },
   {
-    "key": "IsDebug",
-    "type": "checkbox",
-    "defaultValue": true,
-    "templateOptions": {
-      "label": "Toggle debug logging",
-      "description": "When toggled, debug logging will be displayed",
-      "required": false
-    }
+      "key": "IsDebug",
+      "type": "checkbox",
+      "defaultValue": false,
+      "templateOptions": {
+          "label": "Toggle debug logging",
+          "description": "When toggled, debug logging will be displayed. When set to true individual actions are logged. This may cause lots of logging, so use with cause",
+          "required": false
+      }
   }
 ]

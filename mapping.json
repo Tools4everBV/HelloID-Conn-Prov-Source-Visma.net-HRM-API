@@ -3,7 +3,7 @@
 		{
 			"name": "Aggregation",
 			"mode": "complex",
-			"value": "/* This value is used for automatic person aggregation (if enabled) to suggest aggregation of persons based on similar aggregation values.\r\n* The value will be converted to upper case and all white-spaces and special characters, except single quotes, will be removed.\r\n* This field is limited to 200 characters, empty or null values will exclude the person from suggestions.\r\n*/\r\n\r\nlet customValueField = \"UniqueID\"\r\n\r\nfunction getCustomValue()\r\n{\r\n    let customValue\r\n    if (source.employeeUserDefinedFields !== null) {\r\n        for (const employeeUserDefinedField of source.employeeUserDefinedFields) {\r\n            if(typeof employeeUserDefinedField !== \"undefined\" && typeof employeeUserDefinedField.fieldname !== \"undefined\" && employeeUserDefinedField.fieldname == customValueField)\r\n            {\r\n                customValue = \"'\" + employeeUserDefinedField.value.replace(\"-\",\"'\") + \"'\"\r\n            }\r\n        }\r\n    }\r\n    return customValue\r\n}\r\ngetCustomValue();",
+			"value": "/* This value is used for automatic person aggregation (if enabled) to suggest aggregation of persons based on similar aggregation values.\r\n* The value will be converted to upper case and all white-spaces and special characters, except single quotes, will be removed.\r\n* This field is limited to 200 characters, empty or null values will exclude the person from suggestions.\r\n*/\r\nfunction getAggregationValue() {\r\n    /* Example */\r\n\tlet value = ''\r\n    let initials = source.initials;\r\n    let dateOfBirth = source.dateofbirth;\r\n    let placeOfBirth = source.placeOfBirth;\r\n    let gender = source.gender;\r\n    let birthname = source.birthname;\r\n\r\n\tif (initials) {\r\n\t\tvalue = value.concat(initials)\r\n    }\r\n\tif (gender != null) {\r\n\t\tvalue = value.concat(gender);\r\n    }\r\n\tif (dateOfBirth) {\r\n\t\tlet d = new Date(dateOfBirth);\r\n\t\tlet birthDate = d.getFullYear() + '' + d.getMonth() + '' + d.getDate();\r\n\t\tvalue = value.concat(birthDate);\r\n    }\r\n\tif (placeOfBirth) {\r\n\t\tvalue = value.concat(placeOfBirth);\r\n    }\r\n\tif (birthname) {\r\n\t\tvalue = value.concat(birthname);\r\n    }\r\n\treturn deleteDiacriticalMarks(value);\r\n}\r\n\r\ngetAggregationValue();",
 			"validation": {
 				"required": false
 			}
@@ -17,13 +17,28 @@
 			}
 		},
 		{
-			"name": "Custom.VismaUniqueId",
-			"mode": "complex",
-			"value": "let customValueField = \"UniqueID\"\r\n\r\nfunction getCustomValue()\r\n{\r\n    let customValue\r\n    if (source.employeeUserDefinedFields !== null) {\r\n        for (const employeeUserDefinedField of source.employeeUserDefinedFields) {\r\n            if(typeof employeeUserDefinedField !== \"undefined\" && typeof employeeUserDefinedField.fieldname !== \"undefined\" && employeeUserDefinedField.fieldname == customValueField)\r\n            {\r\n                customValue = employeeUserDefinedField.value\r\n            }\r\n        }\r\n    }\r\n    return customValue\r\n}\r\ngetCustomValue();",
+			"name": "Contact.Business.Phone.Fixed",
+			"mode": "field",
+			"value": "officetelphonenumber",
 			"validation": {
-				"required": true
-			},
-			"convertToString": false
+				"required": false
+			}
+		},
+		{
+			"name": "Contact.Business.Phone.Mobile",
+			"mode": "field",
+			"value": "officemobilephonenumber",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "Contact.Personal.Email",
+			"mode": "field",
+			"value": "homeemailaddress",
+			"validation": {
+				"required": false
+			}
 		},
 		{
 			"name": "Details.Gender",
@@ -44,9 +59,9 @@
 		{
 			"name": "Name.Convention",
 			"mode": "complex",
-			"value": "function getConv() {\r\n if (source.nameusage == \"Eigen\") {return \"B\"}\r\n if (source.nameusage == \"Part./eig.\") {return \"PB\"}\r\n if (source.nameusage == \"Partner\") {return \"P\"}\r\n if (source.nameusage == \"Eig./Part.\") {return \"PB\"}\r\n\r\n else { return \"B\" }\r\n}\r\n\r\ngetConv()",
+			"value": "function getValue() {\r\n    let returnValue = '';\r\n\r\n    switch (source.nameusage) {\r\n        case \"Eigen\": {\r\n            returnValue = \"B\";\r\n            break;\r\n        }\r\n        case \"Part./eig.\": {\r\n            returnValue = \"PB\";\r\n            break;\r\n        }\r\n        case \"Partner\": {\r\n            returnValue = \"P\";\r\n            break;\r\n        }\r\n        case \"Eig./Part.\": {\r\n            returnValue = \"BP\";\r\n            break;\r\n        }\r\n        default: {\r\n            returnValue = \"B\";\r\n            break;\r\n        }\r\n    }\r\n\r\n    return returnValue;\r\n}\r\n \r\ngetValue();",
 			"validation": {
-				"required": true
+				"required": false
 			}
 		},
 		{
@@ -110,7 +125,23 @@
 		{
 			"name": "CostBearer.Name",
 			"mode": "field",
-			"value": "costunit",
+			"value": "type",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "CostCenter.Code",
+			"mode": "field",
+			"value": "costcenterCode",
+			"validation": {
+				"required": false
+			}
+		},
+		{
+			"name": "CostCenter.ExternalId",
+			"mode": "field",
+			"value": "costcenterCode",
 			"validation": {
 				"required": false
 			}
@@ -126,7 +157,7 @@
 		{
 			"name": "Department.DisplayName",
 			"mode": "field",
-			"value": "orgunitname_en",
+			"value": "orgunitname",
 			"validation": {
 				"required": false
 			}
@@ -158,7 +189,7 @@
 		{
 			"name": "ExternalId",
 			"mode": "complex",
-			"value": "sourceContract.odporgid\r\n+ '_' +sourceContract.employeeid\r\n+ '_' + sourceContract.contractid\r\n+ '_' + sourceContract.subcontractid",
+			"value": "\r\nfunction getValue() {\r\n    let returnValue = sourceContract.employeeid + '_' + sourceContract.contractid + '_' + sourceContract.subcontractid;\r\n\r\n    return returnValue;\r\n}\r\n \r\ngetValue();",
 			"validation": {
 				"required": true
 			}
@@ -166,7 +197,7 @@
 		{
 			"name": "Manager.ExternalId",
 			"mode": "field",
-			"value": "ManagerId",
+			"value": "ManagerExternalId",
 			"validation": {
 				"required": false
 			}
@@ -174,7 +205,7 @@
 		{
 			"name": "Organization.ExternalId",
 			"mode": "complex",
-			"value": "source.companyid",
+			"value": "\r\nfunction getValue() {\r\n    let returnValue = source.companyid;\r\n\r\n    return returnValue;\r\n}\r\n \r\ngetValue();",
 			"validation": {
 				"required": false
 			}
@@ -182,7 +213,7 @@
 		{
 			"name": "Organization.Name",
 			"mode": "complex",
-			"value": "source.companyname",
+			"value": "function getValue() {\r\n    let returnValue = source.companyname;\r\n\r\n    return returnValue;\r\n}\r\n \r\ngetValue();",
 			"validation": {
 				"required": false
 			}
@@ -192,7 +223,15 @@
 			"mode": "field",
 			"value": "startdate",
 			"validation": {
-				"required": true
+				"required": false
+			}
+		},
+		{
+			"name": "Title.Code",
+			"mode": "field",
+			"value": "functionid",
+			"validation": {
+				"required": false
 			}
 		},
 		{
@@ -214,7 +253,7 @@
 		{
 			"name": "Type.Code",
 			"mode": "field",
-			"value": "emptype",
+			"value": "type",
 			"validation": {
 				"required": false
 			}
@@ -222,7 +261,7 @@
 		{
 			"name": "Type.Description",
 			"mode": "field",
-			"value": "emptypename",
+			"value": "type",
 			"validation": {
 				"required": false
 			}
