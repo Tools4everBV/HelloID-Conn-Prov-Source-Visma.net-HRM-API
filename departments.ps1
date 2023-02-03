@@ -1,249 +1,39 @@
 ########################################################################
 # HelloID-Conn-Prov-Source-Visma.net-HRM-API-Departments
 #
-# Version: 2.0.0.0
+# Version: 3.0.0
 ########################################################################
+#####################################################
+$c = $configuration | ConvertFrom-Json
 
-# Set debug logging
-switch ($($config.IsDebug)) {
+# Set debug logging - When set to true individual actions are logged - May cause lots of logging, so use with cause
+switch ($($c.isDebug)) {
     $true { $VerbosePreference = 'Continue' }
     $false { $VerbosePreference = 'SilentlyContinue' }
 }
+$InformationPreference = "Continue"
+$WarningPreference = "Continue"
+
+# Set TLS to accept TLS, TLS 1.1 and TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
+
+$clientId = $c.clientId
+$clientSecret = $c.clientSecret
+$tenantId = $c.tenantId
+
+$Script:AuthenticationUrl = "https://connect.visma.com/connect/token"
+$Script:Scope = @(
+    'hrmanalytics:nlhrm:exportemployees'
+    , 'hrmanalytics:nlhrm:exportcontracts'
+    , 'hrmanalytics:nlhrm:exportorganizationunits'
+    , 'hrmanalytics:nlhrm:exportmetadata'
+    , 'hrmanalytics:nlhrm:exportusers'
+    , 'hrmanalytics:nlhrm:exportcontactinformation' # Optional, include personal data like private mailaddress
+)
+$Script:BaseUrl = "https://api.analytics1.hrm.visma.net"
+$Script:CallBackUrl = "https://api.analytics1.hrm.visma.net"
 
 #region functions
-function Get-VismaData {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]
-        $BaseUrl,
-
-        [Parameter(Mandatory)]
-        [string]
-        $CallBackUrl,
-
-        [Parameter(Mandatory)]
-        [string]
-        $ClientID,
-
-        [Parameter(Mandatory)]
-        [string]
-        $ClientSecret,
-
-        [Parameter(Mandatory)]
-        [string]
-        $TenantID
-    )
-
-    $waitSeconds = 4
-
-    try {
-        $exportData = @(  'organizational-units','employees','users')
-        Write-Verbose 'Retrieving Visma AccessToken'
-        $accessToken = Get-VismaOauthToken -ClientID $ClientID -ClientSecret $ClientSecret -TenantID $TenantID
-
-        #Write-Verbose 'Adding Authorization headers'
-        $headers = [System.Collections.Generic.Dictionary[string, string]]::new()
-        $headers.Add('Authorization', "Bearer $($AccessToken.access_token)")
-
-        $splatParams = @{
-            CallBackUrl = $CallBackUrl
-            Headers     = $headers
-            WaitSeconds = $waitSeconds
-        }
-        switch ($exportData){
-            'organizational-units'{
-                $splatParams['ExportJobName'] = 'organizational-units'
-                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/metadata/organization-units"
-                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/metadata/organization-units"
-                $organizationalUnitList = Get-VismaExportData @splatParams | ConvertFrom-Csv
-                Write-Verbose "Downloaded organizational-units: $($organizationalUnitList.count)" -Verbose
-            }
-
-            'employees'{
-                $splatParams['ExportJobName'] = 'employees'
-                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/employees"
-                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/employees"
-                $employeeList = Get-VismaExportData @splatParams | ConvertFrom-Csv
-                Write-Verbose "Downloaded employees: $($employeeList.count)" -Verbose
-            }
-
-            'users'{
-                $splatParams['ExportJobName'] = 'users'
-                $splatParams['RequestUri'] = "$BaseUrl/v1/command/nl/hrm/users"
-                $splatParams['QueryUri'] = "$BaseUrl/v1/query/nl/hrm/users"
-                $userList = Get-VismaExportData @splatParams | ConvertFrom-Csv
-                Write-Verbose "Downloaded users: $($userList.count)" -Verbose
-            }
-        }
-
-        $organizationalUnitList | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $null -force
-        $organizationalUnitList | Add-Member -MemberType NoteProperty -Name 'Name' -Value $null -force
-        $organizationalUnitList | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $null -force
-        $organizationalUnitList | Add-Member -MemberType NoteProperty -Name 'ManagerExternalId' -Value $null -force
-
-        $lookupUsersId = $userList | Group-object -Property userid -AsHashTable
-        $lookupEmployeesEmail = $employeeList | Group-Object -Property businessemailaddress -AsHashTable
-
-        foreach ($organizationalUnit in $organizationalUnitList){
-            $organizationalUnit.ExternalId = $organizationalUnit.orgunitid
-            $organizationalUnit.Name = $organizationalUnit.orgname
-            $organizationalUnit.DisplayName = $organizationalUnit.orgname
-
-            if (-Not [string]::IsNullOrEmpty($organizationalUnit.manageruserid)) {
-                $managerObject = $lookupUsersId[$($organizationalUnit.manageruserid)]
-                if ($managerObject.count -gt 0) {
-                    if (-Not [string]::IsNullOrEmpty($managerObject.emailaddress)) {
-                        $managerEmployeeRecord = $lookupEmployeesEmail[$managerObject.emailaddress]
-                        if($null -ne $managerEmployeeRecord ) {
-                            $organizationalUnit.ManagerExternalId = $managerEmployeeRecord.employeeId
-                        } else {
-                            Write-Verbose "[$($organizationalUnit.ExternalId)] Employee record for manager with email [$($managerObject.emailaddress)] not found" -Verbose
-                        }
-                    } else {
-                        Write-Verbose "[$($organizationalUnit.ExternalId)] Email address for manager with userid [$($organizationalUnit.manageruserid)] is empty" -Verbose
-                    }
-                } else {
-                    Write-Verbose "[$($organizationalUnit.ExternalId)] User record for manager with userid [$($organizationalUnit.ManagerExternalId)] not found" -Verbose
-                }
-            } else {
-                Write-Verbose "[$($organizationalUnit.ExternalId)] No manager configured" -Verbose
-            }
-        } # foreach
-        Write-Verbose 'Importing raw data in HelloID'
-        if (-not ($dryRun -eq $true)){
-            Write-Verbose "[Full import] importing '$($organizationalUnitList.count)' departments"
-            Write-Output $organizationalUnitList | ConvertTo-Json -Depth 10
-        } else {
-            Write-Verbose "[Preview] importing '$($organizationalUnitList.count)' departments"
-            Write-Output $organizationalUnitList[1..10] | ConvertTo-Json -Depth 10
-        }
-    } catch {
-        $ex = $PSItem
-
-        if ( $($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
-            $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
-            $errorMessage = Resolve-HTTPError -Error $ex
-            Write-Verbose "Could not retrieve Visma departments. Error: $errorMessage" -Verbose
-        } else {
-            Write-Verbose "Could not retrieve Visma departments. Error: $($ex.Exception.Message)" -Verbose
-        }
-    }
-}
-
-function Get-VismaExportData {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory)]
-        [string]
-        $RequestUri,
-
-        [Parameter(Mandatory)]
-        [string]
-        $QueryUri,
-
-        [Parameter(Mandatory)]
-        [string]
-        $CallBackUrl,
-
-        [Parameter(Mandatory)]
-        [string]
-        $ExportJobName,
-
-        [Parameter(Mandatory)]
-        [System.Collections.Generic.Dictionary[[String], [String]]]
-        $Headers,
-
-        [Parameter(Mandatory)]
-        [int]
-        $WaitSeconds
-    )
-
-    try {
-        Write-Verbose "Requesting jobId for export '$ExportJobName'"
-
-        $splatResponseJobParams = @{
-            Method      = 'POST'
-            Uri         = $RequestUri
-            ContentType = 'application/json'
-            Body        = @{ callbackAddress = $CallBackUrl } | ConvertTo-Json
-            Headers     = $Headers
-        }
-        $responseJob = Invoke-RestMethod @splatResponseJobParams
-
-        do {
-            Write-Verbose "Checking if export for '$ExportJobName' is ready for download"
-            $splatResponseUrlParams = @{
-                Method  = 'GET'
-                Uri     = "$QueryUri/$($responseJob.jobId)"
-                Headers = $Headers
-            }
-            $responseUrl = Invoke-RestMethod @splatResponseUrlParams
-            Start-Sleep -Seconds $WaitSeconds
-        } while ($responseUrl.status -eq 'InProgress')
-
-        if ($responseUrl.status -eq 'Completed'){
-            Write-Verbose "Downloading '$ExportJobName' data"
-
-            if ($responseUrl.organizationUnitsFileUris){
-                $result = Invoke-RestMethod -Uri $responseUrl.organizationUnitsFileUris[0] -Method 'GET'
-            }
-
-            if ($responseUrl.employeeFileUris){
-                $result = Invoke-RestMethod -Uri $responseUrl.employeeFileUris[0] -Method 'GET'
-            }
-
-            if ($responseUrl.usersFileUris){
-                $result = Invoke-RestMethod -Uri $responseUrl.usersFileUris[0] -Method 'GET'
-            }
-        } else {
-            throw "Could not download export data. Error: $($responseUrl.status)"
-        }
-        Write-Output $result
-    } catch {
-        $PScmdlet.ThrowTerminatingError($_)
-    }
-}
-
-function Get-VismaOAuthtoken {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]
-        $ClientID,
-
-        [Parameter(Mandatory)]
-        [string]
-        $ClientSecret,
-
-        [Parameter(Mandatory)]
-        [string]
-        $TenantID
-    )
-
-    try {
-        $body =  @( "grant_type=client_credentials")
-        $body += "scope=hrmanalytics%3Anlhrm%3Aexportemployees%20hrmanalytics%3Anlhrm%3Aexportorganizationunits%20hrmanalytics%3Anlhrm%3Aexportmetadata%20hrmanalytics%3Anlhrm%3Aexportusers"
-        $body += "client_id=$ClientID"
-        $body += "client_secret=$ClientSecret"
-        $body += "tenant_id=$TenantID"
-
-        $splatParams = @{
-            Uri     =  'https://connect.visma.com/connect/token'
-            Method  = 'POST'
-            Body    = $body -join '&'
-            Headers = @{
-                'content-type' = 'application/x-www-form-urlencoded'
-            }
-        }
-        Invoke-RestMethod @splatParams
-    } catch {
-        $PSCmdlet.ThrowTerminatingError($_)
-    }
-}
-#endregion
-
-#region helpers
 function Resolve-HTTPError {
     [CmdletBinding()]
     param (
@@ -262,20 +52,383 @@ function Resolve-HTTPError {
         }
         if ($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') {
             $httpErrorObj.ErrorMessage = $ErrorObject.ErrorDetails.Message
-        } elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
+        }
+        elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
             $httpErrorObj.ErrorMessage = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
         }
         Write-Output $httpErrorObj
     }
 }
-#endregion
 
-$config = $Configuration | ConvertFrom-Json
-$splatParams = @{
-    BaseUrl      = $($config.BaseUrl)
-    CallBackUrl  = $($config.CallBackUrl)
-    ClientID     = $($config.ClientID)
-    ClientSecret = $($config.ClientSecret)
-    TenantID     = $($config.TenantID)
+function Get-ErrorMessage {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline
+        )]
+        [object]$ErrorObject
+    )
+    process {
+        $errorMessage = [PSCustomObject]@{
+            VerboseErrorMessage = $null
+            AuditErrorMessage   = $null
+        }
+
+        if ( $($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or $($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException')) {
+            $httpErrorObject = Resolve-HTTPError -Error $ErrorObject
+
+            $errorMessage.VerboseErrorMessage = $httpErrorObject.ErrorMessage
+
+            $errorMessage.AuditErrorMessage = $httpErrorObject.ErrorMessage
+        }
+
+        # If error message empty, fall back on $ex.Exception.Message
+        if ([String]::IsNullOrEmpty($errorMessage.VerboseErrorMessage)) {
+            $errorMessage.VerboseErrorMessage = $ErrorObject.Exception.Message
+        }
+        if ([String]::IsNullOrEmpty($errorMessage.AuditErrorMessage)) {
+            $errorMessage.AuditErrorMessage = $ErrorObject.Exception.Message
+        }
+
+        Write-Output $errorMessage
+    }
 }
-Get-VismaData @splatParams
+
+function New-VismaSession {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]
+        $ClientID,
+
+        [Parameter(Mandatory)]
+        [string]
+        $ClientSecret,
+
+        [Parameter(Mandatory)]
+        [string]
+        $TenantID
+    )
+
+    #Check if the current token is still valid
+    $accessTokenValid = Confirm-AccessTokenIsValid
+    if ($true -eq $accessTokenValid) {
+        return
+    }
+
+    try {
+        # Set TLS to accept TLS, TLS 1.1 and TLS 1.2
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
+
+        $authorisationBody = @(
+            "grant_type=client_credentials"
+            , "client_id=$($ClientId)"
+            , "client_secret=$($ClientSecret)" 
+            , "tenant_id=$($TenantId)"
+            , "scope=$([uri]::EscapeDataString($Script:Scope -join ' '))"
+        ) -join '&' # Needs to be a single string
+
+        $splatAccessTokenParams = @{
+            Uri             = $Script:AuthenticationUrl
+            Headers         = @{
+                'Cache-Control' = "no-cache"
+            }
+            Method          = 'POST'
+            ContentType     = "application/x-www-form-urlencoded"
+            Body            = $authorisationBody
+            UseBasicParsing = $true
+        }
+        Write-Verbose "Creating Access Token at uri '$($splatAccessTokenParams.Uri)'"
+
+        $result = Invoke-RestMethod @splatAccessTokenParams
+
+        if ($null -eq $result.access_token) {
+            throw $result
+        }
+
+        $Script:expirationTimeAccessToken = (Get-Date).AddSeconds($result.expires_in)
+
+        $Script:AuthenticationHeaders = @{
+            'Authorization' = "Bearer $($result.access_token)"
+        }
+
+        Write-Verbose "Successfully created Access Token at uri '$($splatAccessTokenParams.Uri)'"
+    }
+    catch {
+        $ex = $PSItem
+        $errorMessage = Get-ErrorMessage -ErrorObject $ex
+
+        Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($($errorMessage.VerboseErrorMessage))"
+
+        throw "Error creating Access Token at uri ''$($splatAccessTokenParams.Uri)'. Please check credentials. Error Message: $($errorMessage.AuditErrorMessage)"
+    }
+}
+
+function Confirm-AccessTokenIsValid {
+    if ($null -ne $Script:expirationTimeAccessToken) {
+        if ((Get-Date) -le $Script:expirationTimeAccessToken) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Invoke-VismaWebRequestList {
+    [CmdletBinding()]
+    param (
+        [parameter(Mandatory = $true)]
+        [string]
+        $RequestUri,
+
+        [parameter(Mandatory = $true)]
+        [string]
+        $QueryUri,
+
+        [parameter(Mandatory = $true)]
+        [string]
+        $ExportJobName,
+
+        [parameter(Mandatory = $true)]
+        [string]
+        $ResponseField
+    )
+    # Set TLS to accept TLS, TLS 1.1 and TLS 1.2
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
+
+    $checkDelay = 4000 # Wait for 4 seconds before checking again when the data is not yet available for download
+    $triesCounter = 0
+    do {
+        try {
+            $accessTokenValid = Confirm-AccessTokenIsValid
+            if ($true -ne $accessTokenValid) {
+                New-VismaSession -ClientId $clientId -ClientSecret $clientSecret -TenantId $tenantId
+            }
+
+            $retry = $false
+
+            Write-Verbose "Starting export for '$ExportJobName'"
+            $splatStartExportJobParams = @{
+                Uri             = $RequestUri
+                Headers         = $Script:AuthenticationHeaders
+                Method          = 'POST'
+                ContentType     = 'application/json'
+                Body            = @{ callbackAddress = $Script:CallBackUrl } | ConvertTo-Json
+                UseBasicParsing = $true
+            }
+            $responseStartExportJob = Invoke-RestMethod @splatStartExportJobParams
+
+            Do {
+                Write-Verbose "Checking if export for '$ExportJobName' is ready for download"
+                $splatCheckExportParams = @{
+                    Uri             = "$QueryUri/$($responseStartExportJob.jobId)"
+                    Headers         = $Script:AuthenticationHeaders
+                    Method          = 'GET'
+                    UseBasicParsing = $true
+                }
+                $responseCheckExport = Invoke-RestMethod @splatCheckExportParams
+                Start-Sleep -Milliseconds $checkDelay
+            } While ($responseCheckExport.status -eq 'InProgress')
+
+            if ($responseCheckExport.status -eq 'Completed') {
+                $splatGetDataParams = @{
+                    Uri             = "$($responseCheckExport.$ResponseField[0])" # Since there can be multiple we always select the first
+                    Method          = 'GET'
+                    UseBasicParsing = $true
+                }
+ 
+                Write-Verbose "Querying data from '$($splatGetDataParams.Uri)'"
+
+                $result = (Invoke-RestMethod @splatGetDataParams) | ConvertFrom-Csv -Delimiter ','
+                [System.Collections.ArrayList]$ReturnValue = $result
+            }
+            else {
+                throw "Could not download export data. Error: $($responseUrl.status)"
+            }
+        }
+        catch {
+            $ex = $PSItem
+            $errorMessage = Get-ErrorMessage -ErrorObject $ex
+
+            Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
+
+            $maxTries = 3
+            if ( ($($errorMessage.AuditErrorMessage) -Like "*Too Many Requests*" -or $($errorMessage.AuditErrorMessage) -Like "*Connection timed out*") -and $triesCounter -lt $maxTries ) {
+                $triesCounter++
+                $retry = $true
+                $delay = 601 # Wait for 0,601 seconds
+                Write-Warning "Error querying data from '$($splatGetDataParams.Uri)'. Error Message: $($errorMessage.AuditErrorMessage). Trying again in '$delay' milliseconds for a maximum of '$maxTries' tries."
+                Start-Sleep -Milliseconds $delay
+            }
+            else {
+                $retry = $false
+                throw "Error querying data from '$($splatGetDataParams.Uri)'. Error Message: $($errorMessage.AuditErrorMessage)"
+            }
+        }
+    }while ($retry -eq $true)
+
+    Write-Verbose "Successfully queried data from '$($splatGetDataParams.Uri)'. Result count: $($ReturnValue.Count)"
+
+    return $ReturnValue
+}
+#endregion functions
+
+# Query organizational-units
+try {
+    Write-Verbose "Querying organizational-units"
+
+    $splatParams = @{
+        'ExportJobName' = 'organizational-units'
+        'RequestUri'    = "$Script:BaseUrl/v1/command/nl/hrm/metadata/organization-units"
+        'QueryUri'      = "$Script:BaseUrl/v1/query/nl/hrm/metadata/organization-units"
+        'ResponseField' = "organizationUnitsFileUris"
+    }
+    $organizationalUnitsList = Invoke-VismaWebRequestList @splatParams
+
+    # Make sure organizational-units are unique
+    $organizationalUnitsList = $organizationalUnitsList | Sort-Object orgunitid -Unique
+
+    Write-Information "Successfully queried organizational-units. Result: $($organizationalUnitsList.Count)"
+}
+catch {
+    $ex = $PSItem
+    $errorMessage = Get-ErrorMessage -ErrorObject $ex
+
+    Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
+
+    throw "Error querying organizational-units. Error Message: $($errorMessage.AuditErrorMessage)"
+}
+
+# Query employees
+try {
+    Write-Verbose "Querying employees"
+
+    $splatParams = @{
+        'ExportJobName' = 'employees'
+        'RequestUri'    = "$Script:BaseUrl/v1/command/nl/hrm/employees"
+        'QueryUri'      = "$Script:BaseUrl/v1/query/nl/hrm/employees"
+        'ResponseField' = "employeeFileUris"
+    }
+    $employeesList = Invoke-VismaWebRequestList @splatParams
+
+    # Make sure persons are unique
+    $employeesList = $employeesList | Sort-Object employeeid -Unique
+
+    if (($employeesList | Measure-Object).Count -gt 0) {
+        # Group by emailaddress
+        $personsListGrouped = $employeesList | Group-Object businessemailaddress -CaseSensitive -AsHashTable -AsString
+    }
+
+    Write-Information "Successfully queried employees. Result: $($persons.Count)"
+}
+catch {
+    $ex = $PSItem
+    $errorMessage = Get-ErrorMessage -ErrorObject $ex
+
+    Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
+
+    throw "Error querying employees. Error Message: $($errorMessage.AuditErrorMessage)"
+}
+
+# Query users
+try {
+    Write-Verbose "Querying users"
+
+    $splatParams = @{
+        'ExportJobName' = 'users'
+        'RequestUri'    = "$Script:BaseUrl/v1/command/nl/hrm/users"
+        'QueryUri'      = "$Script:BaseUrl/v1/query/nl/hrm/users"
+        'ResponseField' = "usersFileUris"
+    }
+    $usersList = Invoke-VismaWebRequestList @splatParams
+
+    if (($usersList | Measure-Object).Count -gt 0) {
+        # Group by userid
+        $usersListGroupedByUserId = $usersList | Group-Object userid -CaseSensitive -AsHashTable -AsString
+    }
+
+    Write-Information "Successfully queried users. Result: $($usersList.Count)"
+}
+catch {
+    $ex = $PSItem
+    $errorMessage = Get-ErrorMessage -ErrorObject $ex
+
+    Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
+
+    throw "Error querying users. Error Message: $($errorMessage.AuditErrorMessage)"
+}
+
+try {
+    Write-Verbose 'Enhancing and exporting department objects to HelloID'
+
+    # Set counter to keep track of actual exported department objects
+    $exportedDepartments = 0
+
+    # Enhance the departments model
+    $organizationalUnitsList | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $null -force
+    $organizationalUnitsList | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $null -force
+    $organizationalUnitsList | Add-Member -MemberType NoteProperty -Name 'ManagerExternalId' -Value $null -force
+
+    foreach ($organizationalUnit in $organizationalUnitsList) {
+        # Enhance department with manager information, such as externalId
+        if ($null -ne $usersListGroupedByUserId -and -NOT[string]::IsNullOrEmpty($organizationalUnit.manageruserid)) {
+            $managerUser = $usersListGroupedByUserId[$organizationalUnit.manageruserid]
+            if ($null -ne $personsListGrouped -and $null -ne $managerUser) {
+                if (-NOT[string]::IsNullOrEmpty($managerUser.emailaddress)) {
+                    $managerEmployee = $personsListGrouped[$managerUser.emailaddress]
+                    if ($null -ne $managerEmployee.employeeId) {
+                        $organizationalUnit | Add-Member -MemberType NoteProperty -Name "ManagerExternalId" -Value $managerEmployee.employeeId -Force
+                    }
+                    else {
+                        if ($($c.isDebug) -eq $true) {
+                            ### Be very careful when logging in a loop, only use this when the amount is below 100
+                            ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
+                            Write-Warning "No employee found for manager with BusinessEmailAddress '$($managerUser.emailaddress)'"
+                        }
+                    }
+                }
+                else {
+                    if ($($c.isDebug) -eq $true) {
+                        ### Be very careful when logging in a loop, only use this when the amount is below 100
+                        ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
+                        Write-Warning "No BusinessEmailAddress found for manager user with UserId '$($organizationalUnit.manageruserid)'"
+                    }                        
+                }
+            }
+            else {
+                if ($($c.isDebug) -eq $true) {
+                    ### Be very careful when logging in a loop, only use this when the amount is below 100
+                    ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
+                    Write-Warning "No user found for manager with UserId '$($organizationalUnit.manageruserid)'"
+                }
+            }
+        }
+
+        $department = [PSCustomObject]@{
+            ExternalId        = $organizationalUnit.orgunitid
+            ShortName         = $organizationalUnit.orgunitid
+            DisplayName       = $organizationalUnit.orgname
+            ManagerExternalId = $organizationalUnit.ManagerExternalId
+            ParentExternalId  = $organizationalUnit.orgunitparentid
+        }
+
+        # Sanitize and export the json
+        $department = $department | ConvertTo-Json -Depth 10
+        $department = $department.Replace("._", "__")
+
+        Write-Output $department
+
+        # Updated counter to keep track of actual exported department objects
+        $exportedDepartments++
+    }
+
+    Write-Information "Succesfully enhanced and exported department objects to HelloID. Result count: $($exportedDepartments)"
+    Write-Information "Department import completed"
+}
+catch {
+    $ex = $PSItem
+    $errorMessage = Get-ErrorMessage -ErrorObject $ex
+
+    Write-Verbose "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($errorMessage.VerboseErrorMessage)"
+
+    throw "Could not enhance and export department objects to HelloID. Error Message: $($errorMessage.AuditErrorMessage)"
+}
