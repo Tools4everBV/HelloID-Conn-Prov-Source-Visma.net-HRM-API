@@ -86,14 +86,6 @@ The _HelloID-Conn-Prov-Source-Visma.net-HRM-API_ connector is created for both W
 ### Connection settings
 The following settings are required to connect to the API.
 
-| Setting     | Description | Mandatory |
-| ------------ | ----------- | ----------- |
-| BaseUrl | The url to the Visma.Net HRM API | Yes |
-| CallBackUrl | With the CallBackUrl the results will be POSTed to the URL specified in your request. | Yes |
-| ClientID | The ClientID to authenticate against the API | Yes |
-| ClientSecret | The ClientSecret to authenticate against the API | Yes |
-| TenantID | The TenantID for your Visma.Net HRM environment| Yes |
-
 | Setting                                       | Description                                                               | Mandatory   |
 | --------------------------------------------- | ------------------------------------------------------------------------- | ----------- |
 | Client ID                                     | The Client ID to connect to the Visma.NET HRM API (created when registering the App in in the Visma Developer portal).                             | Yes         |
