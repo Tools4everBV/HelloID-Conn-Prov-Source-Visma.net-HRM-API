@@ -142,7 +142,7 @@ function New-VismaSession {
         }
         Write-Verbose "Creating Access Token at uri '$($splatAccessTokenParams.Uri)'"
 
-        $result = Invoke-RestMethod @splatAccessTokenParams
+        $result = Invoke-RestMethod @splatAccessTokenParams -Verbose:$false
 
         if ($null -eq $result.access_token) {
             throw $result
@@ -217,17 +217,17 @@ function Invoke-VismaWebRequestList {
                 Body            = @{ callbackAddress = $Script:CallBackUrl } | ConvertTo-Json
                 UseBasicParsing = $true
             }
-            $responseStartExportJob = Invoke-RestMethod @splatStartExportJobParams
+            $responseStartExportJob = Invoke-RestMethod @splatStartExportJobParams -Verbose:$false
 
             Do {
-                Write-Verbose "Checking if export for '$ExportJobName' is ready for download"
+                Write-Verbose "Checking if export job with id '$($responseStartExportJob.jobId)' for '$ExportJobName' is ready for download"
                 $splatCheckExportParams = @{
                     Uri             = "$QueryUri/$($responseStartExportJob.jobId)"
                     Headers         = $Script:AuthenticationHeaders
                     Method          = 'GET'
                     UseBasicParsing = $true
                 }
-                $responseCheckExport = Invoke-RestMethod @splatCheckExportParams
+                $responseCheckExport = Invoke-RestMethod @splatCheckExportParams -Verbose:$false
                 Start-Sleep -Milliseconds $checkDelay
             } While ($responseCheckExport.status -eq 'InProgress')
 
@@ -240,7 +240,7 @@ function Invoke-VismaWebRequestList {
  
                 Write-Verbose "Querying data from '$($splatGetDataParams.Uri)'"
 
-                $result = (Invoke-RestMethod @splatGetDataParams) | ConvertFrom-Csv -Delimiter ','
+                $result = (Invoke-RestMethod @splatGetDataParams -Verbose:$false) | ConvertFrom-Csv -Delimiter ','
                 [System.Collections.ArrayList]$ReturnValue = $result
             }
             else {
