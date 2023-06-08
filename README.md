@@ -7,9 +7,9 @@
 | :warning: Warning |
 |:---------------------------|
 | The latest version of this connector **no longer uses the uniqueId**. Visma will also no longer generate this uniqueId. We will now use **Person Aggregation** in HelloID. If you are upgrading an existing implementation, make sure to validate the data and person aggregation. |
-
+<br />
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/69046642/216682928-74db2a4b-bb53-4af0-9f15-087bf3da2486.png">
+  <img src="https://www.tools4ever.nl/connector-logos/vismanet-logo.png">
 </p>
 
 ## Versioning
