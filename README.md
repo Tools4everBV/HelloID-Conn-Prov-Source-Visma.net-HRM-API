@@ -73,6 +73,8 @@ Before the connector can be used to retrieve employee information, the following
 **Optional:**
 - hrmanalytics:nlhrm:exportcontactinformation (to retrieve personal data like private mailaddress)
   > Note: make sure to include the scope 'hrmanalytics:nlhrm:exportcontactinformation' in the import scripts.
+  
+Please see the Visma HRM API documentation for more information on the required scopes per attribute. For the employee attributes, see: [NLHrmEmployeeCsvDto](https://api.analytics1.hrm.visma.net/docs/openapi.html#/:~:text=NLHrmEmployeeCsvDto,%7B)
 
 ### Person Aggregation
 By default, for each contract Visma creates a new employee record (with a new employeeID). Therefore, aggregation is needed.
