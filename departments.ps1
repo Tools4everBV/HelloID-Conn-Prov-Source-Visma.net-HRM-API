@@ -318,7 +318,7 @@ try {
         $personsListGrouped = $employeesList | Group-Object businessemailaddress -CaseSensitive -AsHashTable -AsString
     }
 
-    Write-Information "Successfully queried employees. Result: $($persons.Count)"
+    Write-Information "Successfully queried employees. Result: $($employeesList.Count)"
 }
 catch {
     $ex = $PSItem
