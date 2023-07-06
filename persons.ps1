@@ -551,9 +551,8 @@ try {
                     }
                 }
 
+                [Void]$contractsList.Add($contract)
             }
-
-            [Void]$contractsList.Add($contract)            
         }
         else {
             if ($($c.IsDebug) -eq $true) {
