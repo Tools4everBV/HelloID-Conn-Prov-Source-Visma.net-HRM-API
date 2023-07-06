@@ -28,8 +28,11 @@ $Script:Scope = @(
     , 'hrmanalytics:nlhrm:exportorganizationunits'
     , 'hrmanalytics:nlhrm:exportmetadata'
     , 'hrmanalytics:nlhrm:exportusers'
-    # , 'hrmanalytics:nlhrm:exportcontactinformation' # Optional, include personal data like private mailaddress
 )
+# Optional, include personal data like private mailaddress
+if ($c.IncludePersonalData -eq $true) {
+    $Script:Scope += 'hrmanalytics:nlhrm:exportcontactinformation'
+}
 $Script:BaseUrl = "https://api.analytics1.hrm.visma.net"
 $Script:CallBackUrl = "https://api.analytics1.hrm.visma.net"
 
