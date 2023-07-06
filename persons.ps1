@@ -547,7 +547,7 @@ try {
                 if ($null -ne $contractUserDefinedFieldsListGrouped -and $null -ne $_.employeeId -and $null -ne $_.contractid -and $null -ne $_.subcontractid) {
                     $contractUserDefinedFields = $contractUserDefinedFieldsListGrouped[$contract.employeeid + "_" + $contract.contractid + "_" + $contract.subcontractid]
                     if ($null -ne $contractUserDefinedFields) {
-                        $_ | Add-Member -MemberType NoteProperty -Name "contractUserDefinedFields" -Value $contractUserDefinedFields -Force
+                        $contract | Add-Member -MemberType NoteProperty -Name "contractUserDefinedFields" -Value $contractUserDefinedFields -Force
                     }
                 }
 
