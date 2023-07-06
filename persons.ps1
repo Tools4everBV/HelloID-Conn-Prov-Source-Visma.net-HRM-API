@@ -290,8 +290,8 @@ try {
     $employeesList = $employeesList | Sort-Object employeeid -Unique
 
     if (($employeesList | Measure-Object).Count -gt 0) {
-        # Group by emailaddress
-        $personsListGrouped = $employeesList | Group-Object businessemailaddress -CaseSensitive -AsHashTable -AsString
+        # Group by emailaddress (filter out employees without emailadress, otherwise incorrect matching will occur)
+        $personsListGrouped = $employeesList | Where-Object { $_.businessemailaddress -ne $null } | Group-Object businessemailaddress -CaseSensitive -AsHashTable -AsString
 
         # Set default persons object with employees data
         $persons = $employeesList
@@ -447,8 +447,8 @@ try {
         # Group by userid
         $usersListGroupedByUserId = $usersList | Group-Object userid -CaseSensitive -AsHashTable -AsString
 
-        # Group by emailaddress
-        $usersListGroupedByEmailAddress = $usersList | Group-Object emailaddress -CaseSensitive -AsHashTable -AsString
+        # Group by emailaddress (filter out users without emailadress, otherwise incorrect matching will occur)
+        $usersListGroupedByEmailAddress = $usersList | Where-Object { $_.emailaddress -ne $null } | Group-Object emailaddress -CaseSensitive -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried users. Result: $($usersList.Count)"
