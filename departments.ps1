@@ -238,7 +238,7 @@ function Invoke-VismaWebRequestList {
                     Method          = 'GET'
                     UseBasicParsing = $true
                 }
- 
+
                 Write-Verbose "Querying data from '$($splatGetDataParams.Uri)'"
 
                 $result = (Invoke-RestMethod @splatGetDataParams -Verbose:$false) | ConvertFrom-Csv -Delimiter ','
@@ -318,7 +318,7 @@ try {
 
     if (($employeesList | Measure-Object).Count -gt 0) {
         # Group by emailaddress
-        $personsListGrouped = $employeesList | Group-Object businessemailaddress -CaseSensitive -AsHashTable -AsString
+        $personsListGrouped = $employeesList | Group-Object businessemailaddress -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried employees. Result: $($employeesList.Count)"
@@ -394,7 +394,7 @@ try {
                         ### Be very careful when logging in a loop, only use this when the amount is below 100
                         ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
                         Write-Warning "No BusinessEmailAddress found for manager user with UserId '$($organizationalUnit.manageruserid)'"
-                    }                        
+                    }
                 }
             }
             else {

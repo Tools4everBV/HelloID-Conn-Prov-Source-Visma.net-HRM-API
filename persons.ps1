@@ -240,7 +240,7 @@ function Invoke-VismaWebRequestList {
                     Method          = 'GET'
                     UseBasicParsing = $true
                 }
- 
+
                 Write-Verbose "Querying data from '$($splatGetDataParams.Uri)'"
 
                 $result = (Invoke-RestMethod @splatGetDataParams -Verbose:$false) | ConvertFrom-Csv -Delimiter ','
@@ -419,7 +419,7 @@ try {
     $costCentersList = Invoke-VismaWebRequestList @splatParams
 
     if (($costCentersList | Measure-Object).Count -gt 0) {
-        # Group by costcentername 
+        # Group by costcentername
         $costCentersListGrouped = $costCentersList | Group-Object costcentername -CaseSensitive -AsHashTable -AsString
     }
 
@@ -526,7 +526,7 @@ try {
                                 ### Be very careful when logging in a loop, only use this when the amount is below 100
                                 ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
                                 Write-Warning "No BusinessEmailAddress found for manager user with UserId '$($contract.manageruserid)'"
-                            }                        
+                            }
                         }
                     }
                     else {
@@ -542,12 +542,12 @@ try {
                 if ($null -ne $costCentersListGrouped -and $null -ne $contract.costcenter) {
                     $costCenter = $costCentersListGrouped[$contract.costcenter]
                     if ($null -ne $costCenter) {
-                        $contract | Add-Member -MemberType NoteProperty -Name "costcenterCode" -Value $costCenter.costcenter -Force
+                        $contract | Add-Member -MemberType NoteProperty -Name "costcenterCode" -Value "$($costCenter.costcenter)" -Force
                     }
                 }
 
                 # Example: Add User Defined Fields to the contract, linking key is employeeid + "_" + contractid + "_" + subcontractid
-                if ($null -ne $contractUserDefinedFieldsListGrouped -and $null -ne $_.employeeId -and $null -ne $_.contractid -and $null -ne $_.subcontractid) {
+                if ($null -ne $contractUserDefinedFieldsListGrouped -and $null -ne $contract.employeeId -and $null -ne $contract.contractid -and $null -ne $contract.subcontractid) {
                     $contractUserDefinedFields = $contractUserDefinedFieldsListGrouped[$contract.employeeid + "_" + $contract.contractid + "_" + $contract.subcontractid]
                     if ($null -ne $contractUserDefinedFields) {
                         $contract | Add-Member -MemberType NoteProperty -Name "contractUserDefinedFields" -Value $contractUserDefinedFields -Force
@@ -573,7 +573,7 @@ try {
                 if ($($c.IsDebug) -eq $true) {
                     ### Be very careful when logging in a loop, only use this when the amount is below 100
                     ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
-                    Write-Warning "Excluding person from export: $($_.ExternalId). Reason: Contracts is an empty array"
+                    Write-Warning "Excluding person from export: $($_.ExternalId). Reason: Person has no contract data"
                 }
                 return
             }
