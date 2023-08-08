@@ -346,7 +346,7 @@ try {
 
     if (($usersList | Measure-Object).Count -gt 0) {
         # Group by userid
-        $usersListGroupedByUserId = $usersList | Group-Object userid -CaseSensitive -AsHashTable -AsString
+        $usersListGroupedByUserId = $usersList | Group-Object userid -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried users. Result: $($usersList.Count)"

@@ -325,7 +325,7 @@ try {
 
     if (($personUserDefinedFieldsList | Measure-Object).Count -gt 0) {
         # Group by employeeid
-        $personUserDefinedFieldsListGrouped = $personUserDefinedFieldsList | Group-Object employeeid -CaseSensitive -AsHashTable -AsString
+        $personUserDefinedFieldsListGrouped = $personUserDefinedFieldsList | Group-Object employeeid -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried employee-user-defined-fields. Result: $($personUserDefinedFieldsList.Count)"
@@ -358,7 +358,7 @@ try {
         }
 
         # Group by employeeid
-        $contractsListGrouped = $contractsList | Group-Object employeeid -CaseSensitive -AsHashTable -AsString
+        $contractsListGrouped = $contractsList | Group-Object employeeid -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried contracts. Filtered for contracts that ended '$cutOffDays' days in the past at most. Result: $($contractsList.Count)"
@@ -392,7 +392,7 @@ try {
         }
 
         # Group by ExternalId
-        $contractUserDefinedFieldsListGrouped = $contractUserDefinedFieldsList | Group-Object ExternalId -CaseSensitive -AsHashTable -AsString
+        $contractUserDefinedFieldsListGrouped = $contractUserDefinedFieldsList | Group-Object ExternalId -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried contract-user-defined-fields. Result: $($contractUserDefinedFieldsList.Count)"
@@ -420,7 +420,7 @@ try {
 
     if (($costCentersList | Measure-Object).Count -gt 0) {
         # Group by costcentername
-        $costCentersListGrouped = $costCentersList | Group-Object costcentername -CaseSensitive -AsHashTable -AsString
+        $costCentersListGrouped = $costCentersList | Group-Object costcentername -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried cost-centers. Result: $($costCentersList.Count)"
@@ -448,7 +448,7 @@ try {
 
     if (($usersList | Measure-Object).Count -gt 0) {
         # Group by userid
-        $usersListGroupedByUserId = $usersList | Group-Object userid -CaseSensitive -AsHashTable -AsString
+        $usersListGroupedByUserId = $usersList | Group-Object userid -AsHashTable -AsString
 
         # Group by emailaddress (filter out users without emailadress, otherwise incorrect matching will occur)
         $usersListGroupedByEmailAddress = $usersList | Where-Object { $_.emailaddress -ne $null } | Group-Object emailaddress -AsHashTable -AsString
