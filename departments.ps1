@@ -3,7 +3,6 @@
 #
 # Version: 3.0.0
 ########################################################################
-#####################################################
 $c = $configuration | ConvertFrom-Json
 
 # Set debug logging - When set to true individual actions are logged - May cause lots of logging, so use with cause
@@ -285,11 +284,26 @@ try {
         'QueryUri'      = "$Script:BaseUrl/v1/query/nl/hrm/metadata/organization-units"
         'ResponseField' = "organizationUnitsFileUris"
     }
-    $organizationalUnitsList = Invoke-VismaWebRequestList @splatParams
+    $organizationalUnitsListApi = Invoke-VismaWebRequestList @splatParams
+    $today = (Get-Date).Date
+    $organizationalUnitsList = [System.Collections.Generic.List[PSCustomObject]]::new()
+    foreach ($organizationalUnit in $organizationalUnitsListApi) {
+        if ([string]::IsNullOrEmpty($organizationalUnit.startdate)) {
+            $startDate = [datetime]"1900-01-01"
+        } else {
+            $startDate = [datetime]$organizationalUnit.startdate
+        }
 
-    # Make sure organizational-units are unique
-    $organizationalUnitsList = $organizationalUnitsList | Sort-Object orgunitid -Unique
+        if ([string]::IsNullOrEmpty($organizationalUnit.enddate)) {
+            $endDate = [datetime]"2900-01-01"
+        } else {
+            $endDate = [datetime]$organizationalUnit.enddate
+        }
 
+        if ($startDate -le $today -and $endDate -ge $today) {
+            $organizationalUnitsList.Add($organizationalUnit)
+        }
+    }
     Write-Information "Successfully queried organizational-units. Result: $($organizationalUnitsList.Count)"
 }
 catch {
@@ -373,19 +387,24 @@ try {
 
     foreach ($organizationalUnit in $organizationalUnitsList) {
         # Enhance department with manager information, such as externalId
-        if ($null -ne $usersListGroupedByUserId -and -NOT[string]::IsNullOrEmpty($organizationalUnit.manageruserid)) {
+        if ($null -ne $usersListGroupedByUserId -and -not[string]::IsNullOrEmpty($organizationalUnit.manageruserid)) {
             $managerUser = $usersListGroupedByUserId[$organizationalUnit.manageruserid]
             if ($null -ne $personsListGrouped -and $null -ne $managerUser) {
-                if (-NOT[string]::IsNullOrEmpty($managerUser.emailaddress)) {
+                if (-not[string]::IsNullOrEmpty($managerUser.emailaddress)) {
                     $managerEmployee = $personsListGrouped[$managerUser.emailaddress]
-                    if ($null -ne $managerEmployee.employeeId) {
+                    if ($null -ne $managerEmployee.employeeId -and $managerEmployee.Count -eq 1) {
                         $organizationalUnit | Add-Member -MemberType NoteProperty -Name "ManagerExternalId" -Value $managerEmployee.employeeId -Force
                     }
                     else {
                         if ($($c.isDebug) -eq $true) {
                             ### Be very careful when logging in a loop, only use this when the amount is below 100
                             ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
-                            Write-Warning "No employee found for manager with BusinessEmailAddress '$($managerUser.emailaddress)'"
+                            if ($null -eq $managerEmployee.employeeId) {
+                                Write-Warning "[OU: $($organizationalUnit.orgunitid)-$($organizationalUnit.orgname)] No employee record found for manager with BusinessEmailAddress [$($managerUser.emailaddress)]"
+                            }
+                            if ($managerEmployee.Count -gt 1) {
+                                Write-Warning "[OU: $($organizationalUnit.orgunitid)-$($organizationalUnit.orgname)] Multiple [$($managerEmployee.Count)] employee records [$($managerEmployee.employeeId)] found for manager with BusinessEmailAddress [$($managerUser.emailaddress)]"
+                            }
                         }
                     }
                 }
