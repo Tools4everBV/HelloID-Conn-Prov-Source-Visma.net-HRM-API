@@ -41,6 +41,15 @@
       }
   },
   {
+      "key": "IncludePersonalData",
+      "type": "checkbox",
+      "defaultValue": true,
+      "templateOptions": {
+          "label": "Include personal data like private mailaddress. Scope 'hrmanalytics:nlhrm:exportcontactinformation' is used, make sure to have this enabled and assigned to the connector",
+          "required": false
+      }
+  },
+  {
       "key": "ExcludePersonsWithoutContractsInHelloID",
       "type": "checkbox",
       "defaultValue": true,

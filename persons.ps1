@@ -30,8 +30,11 @@ $Script:Scope = @(
     , 'hrmanalytics:nlhrm:exportorganizationunits'
     , 'hrmanalytics:nlhrm:exportmetadata'
     , 'hrmanalytics:nlhrm:exportusers'
-    # , 'hrmanalytics:nlhrm:exportcontactinformation' # Optional, include personal data like private mailaddress
 )
+# Optional, include personal data like private mailaddress
+if ($c.IncludePersonalData -eq $true) {
+    $Script:Scope += 'hrmanalytics:nlhrm:exportcontactinformation'
+}
 $Script:BaseUrl = "https://api.analytics1.hrm.visma.net"
 $Script:CallBackUrl = "https://api.analytics1.hrm.visma.net"
 
@@ -237,7 +240,7 @@ function Invoke-VismaWebRequestList {
                     Method          = 'GET'
                     UseBasicParsing = $true
                 }
- 
+
                 Write-Verbose "Querying data from '$($splatGetDataParams.Uri)'"
 
                 $result = (Invoke-RestMethod @splatGetDataParams -Verbose:$false) | ConvertFrom-Csv -Delimiter ','
@@ -290,8 +293,8 @@ try {
     $employeesList = $employeesList | Sort-Object employeeid -Unique
 
     if (($employeesList | Measure-Object).Count -gt 0) {
-        # Group by emailaddress
-        $personsListGrouped = $employeesList | Group-Object businessemailaddress -CaseSensitive -AsHashTable -AsString
+        # Group by emailaddress (filter out employees without emailadress, otherwise incorrect matching will occur)
+        $personsListGrouped = $employeesList | Where-Object { $_.businessemailaddress -ne $null } | Group-Object businessemailaddress -AsHashTable -AsString
 
         # Set default persons object with employees data
         $persons = $employeesList
@@ -322,7 +325,7 @@ try {
 
     if (($personUserDefinedFieldsList | Measure-Object).Count -gt 0) {
         # Group by employeeid
-        $personUserDefinedFieldsListGrouped = $personUserDefinedFieldsList | Group-Object employeeid -CaseSensitive -AsHashTable -AsString
+        $personUserDefinedFieldsListGrouped = $personUserDefinedFieldsList | Group-Object employeeid -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried employee-user-defined-fields. Result: $($personUserDefinedFieldsList.Count)"
@@ -355,7 +358,7 @@ try {
         }
 
         # Group by employeeid
-        $contractsListGrouped = $contractsList | Group-Object employeeid -CaseSensitive -AsHashTable -AsString
+        $contractsListGrouped = $contractsList | Group-Object employeeid -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried contracts. Filtered for contracts that ended '$cutOffDays' days in the past at most. Result: $($contractsList.Count)"
@@ -389,7 +392,7 @@ try {
         }
 
         # Group by ExternalId
-        $contractUserDefinedFieldsListGrouped = $contractUserDefinedFieldsList | Group-Object ExternalId -CaseSensitive -AsHashTable -AsString
+        $contractUserDefinedFieldsListGrouped = $contractUserDefinedFieldsList | Group-Object ExternalId -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried contract-user-defined-fields. Result: $($contractUserDefinedFieldsList.Count)"
@@ -416,8 +419,8 @@ try {
     $costCentersList = Invoke-VismaWebRequestList @splatParams
 
     if (($costCentersList | Measure-Object).Count -gt 0) {
-        # Group by costcentername 
-        $costCentersListGrouped = $costCentersList | Group-Object costcentername -CaseSensitive -AsHashTable -AsString
+        # Group by costcentername
+        $costCentersListGrouped = $costCentersList | Group-Object costcentername -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried cost-centers. Result: $($costCentersList.Count)"
@@ -445,10 +448,10 @@ try {
 
     if (($usersList | Measure-Object).Count -gt 0) {
         # Group by userid
-        $usersListGroupedByUserId = $usersList | Group-Object userid -CaseSensitive -AsHashTable -AsString
+        $usersListGroupedByUserId = $usersList | Group-Object userid -AsHashTable -AsString
 
-        # Group by emailaddress
-        $usersListGroupedByEmailAddress = $usersList | Group-Object emailaddress -CaseSensitive -AsHashTable -AsString
+        # Group by emailaddress (filter out users without emailadress, otherwise incorrect matching will occur)
+        $usersListGroupedByEmailAddress = $usersList | Where-Object { $_.emailaddress -ne $null } | Group-Object emailaddress -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried users. Result: $($usersList.Count)"
@@ -523,7 +526,7 @@ try {
                                 ### Be very careful when logging in a loop, only use this when the amount is below 100
                                 ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
                                 Write-Warning "No BusinessEmailAddress found for manager user with UserId '$($contract.manageruserid)'"
-                            }                        
+                            }
                         }
                     }
                     else {
@@ -539,21 +542,20 @@ try {
                 if ($null -ne $costCentersListGrouped -and $null -ne $contract.costcenter) {
                     $costCenter = $costCentersListGrouped[$contract.costcenter]
                     if ($null -ne $costCenter) {
-                        $contract | Add-Member -MemberType NoteProperty -Name "costcenterCode" -Value $costCenter.costcenter -Force
+                        $contract | Add-Member -MemberType NoteProperty -Name "costcenterCode" -Value "$($costCenter.costcenter)" -Force
                     }
                 }
 
                 # Example: Add User Defined Fields to the contract, linking key is employeeid + "_" + contractid + "_" + subcontractid
-                if ($null -ne $contractUserDefinedFieldsListGrouped -and $null -ne $_.employeeId -and $null -ne $_.contractid -and $null -ne $_.subcontractid) {
+                if ($null -ne $contractUserDefinedFieldsListGrouped -and $null -ne $contract.employeeId -and $null -ne $contract.contractid -and $null -ne $contract.subcontractid) {
                     $contractUserDefinedFields = $contractUserDefinedFieldsListGrouped[$contract.employeeid + "_" + $contract.contractid + "_" + $contract.subcontractid]
                     if ($null -ne $contractUserDefinedFields) {
-                        $_ | Add-Member -MemberType NoteProperty -Name "contractUserDefinedFields" -Value $contractUserDefinedFields -Force
+                        $contract | Add-Member -MemberType NoteProperty -Name "contractUserDefinedFields" -Value $contractUserDefinedFields -Force
                     }
                 }
 
+                [Void]$contractsList.Add($contract)
             }
-
-            [Void]$contractsList.Add($contract)            
         }
         else {
             if ($($c.IsDebug) -eq $true) {
@@ -571,7 +573,7 @@ try {
                 if ($($c.IsDebug) -eq $true) {
                     ### Be very careful when logging in a loop, only use this when the amount is below 100
                     ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
-                    Write-Warning "Excluding person from export: $($_.ExternalId). Reason: Contracts is an empty array"
+                    Write-Warning "Excluding person from export: $($_.ExternalId). Reason: Person has no contract data"
                 }
                 return
             }
