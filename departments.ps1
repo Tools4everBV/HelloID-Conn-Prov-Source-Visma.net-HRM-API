@@ -1,7 +1,7 @@
 ########################################################################
 # HelloID-Conn-Prov-Source-Visma.net-HRM-API-Departments
 #
-# Version: 3.0.0
+# Version: 3.1.0
 ########################################################################
 $c = $configuration | ConvertFrom-Json
 
