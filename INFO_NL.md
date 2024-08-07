@@ -45,8 +45,8 @@ Hoewel HelloID het beheer van accounts en autorisaties in belangrijke mate autom
 
 Via HelloID kan je Visma.net aan diverse doelsystemen koppelen. Zo kan HelloID op basis van informatie uit Visma.net geautomatiseerd mutaties doorvoeren in je doelsystemen. De integraties nemen je veel werk uit handen en tillen daarnaast het beheer van gebruikers en autorisaties naar een hoger niveau. Enkele veelvoorkomende integraties zijn:
 
-Visma.net - Active Directory koppeling: Met behulp van deze koppeling automatiseer je handmatige taken en voorkom je menselijke fouten. HelloID synchroniseert Visma.net en Active Directory automatisch, waardoor je zeker stelt dat accounts en toegangsrechten altijd volledig up-to-date zijn.
+**Visma.net - Active Directory koppeling:** Met behulp van deze koppeling automatiseer je handmatige taken en voorkom je menselijke fouten. HelloID synchroniseert Visma.net en Active Directory automatisch, waardoor je zeker stelt dat accounts en toegangsrechten altijd volledig up-to-date zijn.
 
-Visma.net - Nedap Ons: De integratie automatiseert account provisioning en het beheer van autorisaties in Nedap Ons. Zorgmedewerkers beschikken hierdoor op hun eerste werkdag direct over de juiste toegang tot cliëntinformatie in Nedap Ons. 
+**Visma.net - Nedap Ons:** De integratie automatiseert account provisioning en het beheer van autorisaties in Nedap Ons. Zorgmedewerkers beschikken hierdoor op hun eerste werkdag direct over de juiste toegang tot cliëntinformatie in Nedap Ons. 
 
 Voor HelloID zijn 200 connectoren beschikbaar, waarmee je de IAM-oplossing aan een breed scala aan bron- en doelsystemen kunt koppelen. Dankzij deze brede integratiemogelijkheden kan je Visma.net dan ook koppelen aan alle populaire doelsystemen.
