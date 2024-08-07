@@ -1,5 +1,3 @@
-## Visma.net Source Connector
-
 The Visma.net Source Connector significantly automates the management of user accounts and access rights in Visma.net. By using this connector, you can link Visma.net to the Identity & Access Management (IAM) solution HelloID by Tools4ever. This integration saves time managing accounts and authorisations, and automates this error-prone process. This article provides more information about this link, its specific capabilities, and its benefits.
 
 ## What is Visma.net?
