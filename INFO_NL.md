@@ -1,5 +1,3 @@
-## Visma.net Source Connector
-
 De Visma.net Source Connector automatiseert het beheer van gebruikersaccounts en toegangsrechten in Visma.net in belangrijke mate. Met behulp van deze connector koppel je Visma.net aan de Identity & Access Management (IAM)-oplossing HelloID van Tools4ever. Zo ben je minder tijd kwijt aan het beheren van accounts en autorisaties, en automatiseer je dit foutgevoelige proces. In dit artikel lees je meer over deze koppeling, de specifieke mogelijkheden en de voordelen.
 
 ## Wat is Visma.net?
