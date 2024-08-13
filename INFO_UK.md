@@ -27,10 +27,10 @@ The integration with Visma.net ensures that HelloID has all the necessary source
 
 | Change in Visma.net |	Procedure in target systems |
 | ------------------------| --------------------------| 
-| New employee |	Based on data from Visma.net, HelloID creates a user account in connected applications, assigning the appropriate group memberships. Depending on the role of the new employee, the IAM solution also creates the required user accounts in other systems and assigns the correct permissions.
-| Change in employee role |	A new role may require different authorisations. HelloID automatically modifies user accounts and, if necessary, assigns or revokes permissions in connected systems. The authorisation model of HelloID is always leading in these cases.
-| Employee name change |	The display name and email address are modified if required.
-| Employee leaves |	HelloID deactivates user accounts in target systems and notifies relevant employees in the organisation. Over time, the IAM solution automatically deletes the deactivated accounts.
+|** New employee** |	Based on data from Visma.net, HelloID creates a user account in connected applications, assigning the appropriate group memberships. Depending on the role of the new employee, the IAM solution also creates the required user accounts in other systems and assigns the correct permissions.
+| **Change in employee role** |	A new role may require different authorisations. HelloID automatically modifies user accounts and, if necessary, assigns or revokes permissions in connected systems. The authorisation model of HelloID is always leading in these cases.
+| **Employee name change** |	The display name and email address are modified if required.
+| **Employee leaves** |	HelloID deactivates user accounts in target systems and notifies relevant employees in the organisation. Over time, the IAM solution automatically deletes the deactivated accounts.
 
 HelloID uses the REST APIs of Visma.net to import a standard set of data into the HelloID Vault. This digital vault is where the IAM solution uniformly stores information by mapping data to the appropriate fields. This includes employee details, contract information, and company information.
 
@@ -42,8 +42,8 @@ Although HelloID significantly automates the management of accounts and authoris
 
 Through HelloID, you can connect Visma.net to various target systems. HelloID can automatically implement changes from Visma.net to your target systems, taking a significant workload off your shoulders, elevating the management of users and authorisations to a higher level. Some common integrations include:
 
-**Visma.net - Active Directory Connection:** This connection automates manual tasks and prevents human errors. HelloID ensures automatic synchronisation between Visma.net and Active Directory, keeping accounts and access rights fully up to date.
+* **Visma.net - Active Directory Connection:** This connection automates manual tasks and prevents human errors. HelloID ensures automatic synchronisation between Visma.net and Active Directory, keeping accounts and access rights fully up to date.
 
-**Visma.net - Nedap Ons:** This integration automates account provisioning and the management of authorisations in Nedap Ons. As a result, healthcare workers have the right access to client information in Nedap Ons from their first day of work.
+* **Visma.net - Nedap Ons:** This integration automates account provisioning and the management of authorisations in Nedap Ons. As a result, healthcare workers have the right access to client information in Nedap Ons from their first day of work.
 
 HelloID supports over 200 connectors, allowing the IAM solution to interface with a broad spectrum of source and target systems. These extensive integration capabilities allow you to connect Visma.net to all popular target systems. You can find a list of all available connectors here.
