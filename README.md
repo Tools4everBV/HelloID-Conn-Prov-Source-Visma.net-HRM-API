@@ -55,6 +55,8 @@ Please see the following website about the Visma.net HRM API documentation.
 - https://developer.visma.com/api/visma-net-hrm-payroll-api/
 - https://api.analytics1.hrm.visma.net/docs/openapi.html
 
+> Note: These end-points do return a lot of information. Some of these fields are excluded in the API call. Please be aware that the exclusion is applied correctly and that this does not prevent access to this data (it only limits the data send)
+
 
 ## Getting started
 By using this connector you will have the ability to retrieve employee and contract data from the Visma.NET HR system.
