@@ -293,8 +293,8 @@ try {
     $employeesList = $employeesList | Sort-Object employeeid -Unique
 
     if (($employeesList | Measure-Object).Count -gt 0) {
-        # Group by emailaddress (filter out employees without emailadress, otherwise incorrect matching will occur)
-        $personsListGrouped = $employeesList | Where-Object { $_.businessemailaddress -ne $null } | Group-Object businessemailaddress -AsHashTable -AsString
+        # Group by EmployeeID (filter out employees without employeeid, otherwise incorrect matching will occur)
+        $personsListGrouped = $employeesList | Where-Object { $_.employeeid -ne $null } | Group-Object employeeid  -AsHashTable -AsString
 
         # Set default persons object with employees data
         $persons = $employeesList
@@ -508,25 +508,17 @@ try {
                 if ($null -ne $usersListGroupedByUserId -and -NOT[string]::IsNullOrEmpty($contract.manageruserid)) {
                     $managerUser = $usersListGroupedByUserId[$contract.manageruserid]
                     if ($null -ne $personsListGrouped -and $null -ne $managerUser) {
-                        if (-NOT[string]::IsNullOrEmpty($managerUser.emailaddress)) {
-                            $managerEmployee = $personsListGrouped[$managerUser.emailaddress]
-                            if ($null -ne $managerEmployee.employeeId) {
-                                $contract | Add-Member -MemberType NoteProperty -Name "ManagerExternalId" -Value $managerEmployee.employeeId -Force
-                            }
-                            else {
-                                if ($($c.IsDebug) -eq $true) {
-                                    ### Be very careful when logging in a loop, only use this when the amount is below 100
-                                    ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
-                                    Write-Warning "No employee found for manager with BusinessEmailAddress '$($managerUser.emailaddress)'"
-                                }
-                            }
-                        }
+                        if (-NOT[string]::IsNullOrEmpty($managerUser.employeeid)) { 
+                            $managerEmployee = $personsListGrouped[$managerUser.employeeid] 
+                            
+                            $contract | Add-Member -MemberType NoteProperty -Name "ManagerExternalId" -Value $managerEmployee.employeeId -Force 
+                        } 
                         else {
                             if ($($c.IsDebug) -eq $true) {
-                                ### Be very careful when logging in a loop, only use this when the amount is below 100
-                                ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
-                                Write-Warning "No BusinessEmailAddress found for manager user with UserId '$($contract.manageruserid)'"
-                            }
+                                ### Be very careful when logging in a loop, only use this when the amount is below 100 
+                                ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS 
+                                Write-Warning "No manager found because employeeid is empty for UserId '$($contract.manageruserid)'" 
+                            } 
                         }
                     }
                     else {
