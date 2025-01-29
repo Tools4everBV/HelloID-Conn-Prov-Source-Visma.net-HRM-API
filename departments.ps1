@@ -290,13 +290,15 @@ try {
     foreach ($organizationalUnit in $organizationalUnitsListApi) {
         if ([string]::IsNullOrEmpty($organizationalUnit.startdate)) {
             $startDate = [datetime]"1900-01-01"
-        } else {
+        }
+        else {
             $startDate = [datetime]$organizationalUnit.startdate
         }
 
         if ([string]::IsNullOrEmpty($organizationalUnit.enddate)) {
             $endDate = [datetime]"2900-01-01"
-        } else {
+        }
+        else {
             $endDate = [datetime]$organizationalUnit.enddate
         }
 
@@ -331,8 +333,8 @@ try {
     $employeesList = $employeesList | Sort-Object employeeid -Unique
 
     if (($employeesList | Measure-Object).Count -gt 0) {
-        # Group by emailaddress
-        $personsListGrouped = $employeesList | Group-Object businessemailaddress -AsHashTable -AsString
+        # Group by EmployeeID (filter out employees without employeeid, otherwise incorrect matching will occur)
+        $personsListGrouped = $employeesList | Where-Object { $_.employeeid -ne $null } | Group-Object employeeid  -AsHashTable -AsString
     }
 
     Write-Information "Successfully queried employees. Result: $($employeesList.Count)"
@@ -380,18 +382,13 @@ try {
     # Set counter to keep track of actual exported department objects
     $exportedDepartments = 0
 
-    # Enhance the departments model
-    $organizationalUnitsList | Add-Member -MemberType NoteProperty -Name 'ExternalId' -Value $null -force
-    $organizationalUnitsList | Add-Member -MemberType NoteProperty -Name 'DisplayName' -Value $null -force
-    $organizationalUnitsList | Add-Member -MemberType NoteProperty -Name 'ManagerExternalId' -Value $null -force
-
     foreach ($organizationalUnit in $organizationalUnitsList) {
         # Enhance department with manager information, such as externalId
         if ($null -ne $usersListGroupedByUserId -and -not[string]::IsNullOrEmpty($organizationalUnit.manageruserid)) {
             $managerUser = $usersListGroupedByUserId[$organizationalUnit.manageruserid]
             if ($null -ne $personsListGrouped -and $null -ne $managerUser) {
-                if (-not[string]::IsNullOrEmpty($managerUser.emailaddress)) {
-                    $managerEmployee = $personsListGrouped[$managerUser.emailaddress]
+                if (-NOT[string]::IsNullOrEmpty($managerUser.employeeid)) {
+                    $managerEmployee = $personsListGrouped[$managerUser.employeeid]
                     if ($null -ne $managerEmployee.employeeId -and $managerEmployee.Count -eq 1) {
                         $organizationalUnit | Add-Member -MemberType NoteProperty -Name "ManagerExternalId" -Value $managerEmployee.employeeId -Force
                     }
@@ -400,10 +397,10 @@ try {
                             ### Be very careful when logging in a loop, only use this when the amount is below 100
                             ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
                             if ($null -eq $managerEmployee.employeeId) {
-                                Write-Warning "[OU: $($organizationalUnit.orgunitid)-$($organizationalUnit.orgname)] No employee record found for manager with BusinessEmailAddress [$($managerUser.emailaddress)]"
+                                Write-Warning "[OU: $($organizationalUnit.orgunitid)-$($organizationalUnit.orgname)] No employee record found for manager with employeeid [$($managerUser.employeeid)]"
                             }
                             if ($managerEmployee.Count -gt 1) {
-                                Write-Warning "[OU: $($organizationalUnit.orgunitid)-$($organizationalUnit.orgname)] Multiple [$($managerEmployee.Count)] employee records [$($managerEmployee.employeeId)] found for manager with BusinessEmailAddress [$($managerUser.emailaddress)]"
+                                Write-Warning "[OU: $($organizationalUnit.orgunitid)-$($organizationalUnit.orgname)] Multiple [$($managerEmployee.Count)] employee records [$($managerEmployee.employeeId)] found for manager with employeeid [$($managerUser.employeeid)]"
                             }
                         }
                     }
@@ -412,7 +409,7 @@ try {
                     if ($($c.isDebug) -eq $true) {
                         ### Be very careful when logging in a loop, only use this when the amount is below 100
                         ### When this would log over 100 lines, please refer from using this in HelloID and troubleshoot this in local PS
-                        Write-Warning "No BusinessEmailAddress found for manager user with UserId '$($organizationalUnit.manageruserid)'"
+                        Write-Warning "No manager found because employeeid is empty for UserId '$($contract.manageruserid)'"
                     }
                 }
             }
@@ -427,7 +424,6 @@ try {
 
         $department = [PSCustomObject]@{
             ExternalId        = $organizationalUnit.orgunitid
-            ShortName         = $organizationalUnit.orgunitid
             DisplayName       = $organizationalUnit.orgname
             ManagerExternalId = $organizationalUnit.ManagerExternalId
             ParentExternalId  = $organizationalUnit.orgunitparentid
