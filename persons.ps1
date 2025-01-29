@@ -345,7 +345,7 @@ try {
 
     $splatParams = @{
         'ExportJobName' = 'contracts'
-        'RequestUri'    = "$Script:BaseUrl/v1/command/nl/hrm/contracts?fields=!rosterid,ptfactor,scaletype_en,scaletype,scale,step,stepname,garscaletype,garstep,garstepname,catsscale,catsscalename,catsscaleid,catsrspfactor,salaryhour,garsalaryhour,salaryhourort,salaryhourtravel,salaryhourextra,salarytype,distance,maxdistance,dayspw"
+        'RequestUri'    = "$Script:BaseUrl/v1/command/nl/hrm/contracts?fields=!catsrspfactor,catsscale,catsscaleid,catsscalename,dayspw,distance,garsalaryhour,garscaletype,garstep,garstepname,maxdistance,ptfactor,rosterid,salaryfulltime,salaryhour,salaryhourextra,salaryhourort,salaryhourtravel,salarytype,scale,scaletype,scaletype_en,step,stepname"
         'QueryUri'      = "$Script:BaseUrl/v1/query/nl/hrm/contracts"
         'ResponseField' = "contractFileUris"
     }
