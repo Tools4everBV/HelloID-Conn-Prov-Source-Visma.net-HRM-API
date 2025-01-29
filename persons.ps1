@@ -1,7 +1,7 @@
 ########################################################################
 # HelloID-Conn-Prov-Source-Visma.net-HRM-API-Persons
 #
-# Version: 3.1.0
+# Version: 3.3.0
 ########################################################################
 #####################################################
 $c = $configuration | ConvertFrom-Json
@@ -489,11 +489,17 @@ try {
             }
         }
 
-        # Add User Defined Fields to the person, linking key is employeeId
+        # Transform Employee User Defined Fields and add to the person
         if ($null -ne $personUserDefinedFieldsListGrouped -and $null -ne $_.employeeId) {
-            $employeeUserDefinedFields = $personUserDefinedFieldsListGrouped[$_.employeeId]
-            if ($null -ne $employeeUserDefinedFields) {
-                $_ | Add-Member -MemberType NoteProperty -Name "employeeUserDefinedFields" -Value $employeeUserDefinedFields -Force
+            $personUserDefinedFields = $null
+            $personUserDefinedFields = $personUserDefinedFieldsListGrouped["$($_.employeeId)"]
+            if ($null -ne $personUserDefinedFields) {
+                foreach ($personUserDefinedField in $personUserDefinedFields) {
+                    # Add listname, value, startdate and enddate as properties to employment object
+                    foreach ($property in $personUserDefinedField.PsObject.Properties | Where-Object { $_.Name -in @('listname', 'value', 'startdate', 'enddate') }) {
+                        $_ | Add-Member -MemberType NoteProperty -Name ("employeeUserDefinedField_" + $personUserDefinedField.fieldname.Replace(' ', '') + "_" + $property.Name) -Value "$($property.value)" -Force
+                    }
+                }
             }
         }
 
@@ -538,11 +544,17 @@ try {
                     }
                 }
 
-                # Example: Add User Defined Fields to the contract, linking key is employeeid + "_" + contractid + "_" + subcontractid
+                # Transform Contract User Defined Fields and add to the contract
                 if ($null -ne $contractUserDefinedFieldsListGrouped -and $null -ne $contract.employeeId -and $null -ne $contract.contractid -and $null -ne $contract.subcontractid) {
-                    $contractUserDefinedFields = $contractUserDefinedFieldsListGrouped[$contract.employeeid + "_" + $contract.contractid + "_" + $contract.subcontractid]
+                    $contractUserDefinedFields = $null
+                    $contractUserDefinedFields = $contractUserDefinedFieldsListGrouped[("$($contract.employeeid)" + "_" + "$($contract.contractid)" + "_" + "$($contract.subcontractid)")]
                     if ($null -ne $contractUserDefinedFields) {
-                        $contract | Add-Member -MemberType NoteProperty -Name "contractUserDefinedFields" -Value $contractUserDefinedFields -Force
+                        foreach ($contractUserDefinedField in $contractUserDefinedFields) {
+                            # Add listname, value, startdate and enddate as properties to employment object
+                            foreach ($property in $personUserDefinedField.PsObject.Properties | Where-Object { $_.Name -in @('listname', 'value', 'startdate', 'enddate') }) {
+                                $contract | Add-Member -MemberType NoteProperty -Name ("contractUserDefinedField_" + $personUserDefinedField.fieldname.Replace(' ', '') + "_" + $property.Name) -Value "$($property.value)" -Force
+                            }
+                        }
                     }
                 }
 
