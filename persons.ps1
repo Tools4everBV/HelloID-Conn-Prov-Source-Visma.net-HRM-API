@@ -551,8 +551,8 @@ try {
                     if ($null -ne $contractUserDefinedFields) {
                         foreach ($contractUserDefinedField in $contractUserDefinedFields) {
                             # Add listname, value, startdate and enddate as properties to employment object
-                            foreach ($property in $personUserDefinedField.PsObject.Properties | Where-Object { $_.Name -in @('listname', 'value', 'startdate', 'enddate') }) {
-                                $contract | Add-Member -MemberType NoteProperty -Name ("contractUserDefinedField_" + $personUserDefinedField.fieldname.Replace(' ', '') + "_" + $property.Name) -Value "$($property.value)" -Force
+                            foreach ($property in $contractUserDefinedField.PsObject.Properties | Where-Object { $_.Name -in @('listname', 'value', 'startdate', 'enddate') }) {
+                                $contract | Add-Member -MemberType NoteProperty -Name ("contractUserDefinedField_" + $contractUserDefinedField.fieldname.Replace(' ', '') + "_" + $property.Name) -Value "$($property.value)" -Force
                             }
                         }
                     }
