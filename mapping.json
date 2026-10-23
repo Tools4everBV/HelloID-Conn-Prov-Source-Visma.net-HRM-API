@@ -35,7 +35,7 @@
 		{
 			"name": "Name.Convention",
 			"mode": "complex",
-			"value": "function getValue() {\r\n    let returnValue = '';\r\n\r\n    switch (source.nameusage) {\r\n        case \"Eigen\": {\r\n            returnValue = \"B\";\r\n            break;\r\n        }\r\n        case \"Part./eig.\": {\r\n            returnValue = \"PB\";\r\n            break;\r\n        }\r\n        case \"Partner\": {\r\n            returnValue = \"P\";\r\n            break;\r\n        }\r\n        case \"Eig./Part.\": {\r\n            returnValue = \"BP\";\r\n            break;\r\n        }\r\n        default: {\r\n            returnValue = \"B\";\r\n            break;\r\n        }\r\n    }\r\n\r\n    return returnValue;\r\n}\r\n \r\ngetValue();",
+			"value": "function getValue() {\r\n    let returnValue = '';\r\n\r\n    switch (source.nameusage) {\r\n        case \"Eigen\": {\r\n            returnValue = \"B\";\r\n            break;\r\n        }\r\n        case \"Part./eig.\": {\r\n            returnValue = \"PB\";\r\n            break;\r\n        }\r\n        case \"Partner\": {\r\n            returnValue = \"P\";\r\n            break;\r\n        }\r\n        case \"Eig./part.\": {\r\n            returnValue = \"BP\";\r\n            break;\r\n        }\r\n        default: {\r\n            returnValue = \"B\";\r\n            break;\r\n        }\r\n    }\r\n\r\n    return returnValue;\r\n}\r\n \r\ngetValue();",
 			"validation": {
 				"required": false
 			}
