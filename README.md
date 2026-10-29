@@ -13,12 +13,8 @@
 </p>
 
 ## Versioning
-| Version | Description | Date |
-| - | - | - |
-| 3.0.0   | Release of v3 connector with updated logging and performance and no longer using uniqueId | 2023/02/03  |
-| 2.0.0   | Release of v2 connector including support for aggregation, multiple contracts and department manager lookup | 2022/11/07  |
-| 1.1.0   | Added support to only import contracts X days in past at most | 2022/08/03  |
-| 1.0.0   | Initial release | 2021/10/04  |
+
+See [CHANGELOG.md](CHANGELOG.md) for versions, release dates and changes.
 
 ## Table of contents
 - [HelloID-Conn-Prov-Source-Visma.net-HRM-API](#helloid-conn-prov-source-vismanet-hrm-api)
@@ -135,16 +131,7 @@ For help setting up a new source connector, please refer to our [documentation](
 
 ## Change history
 
-| File               | Version | Changes
-| ------------------ | ------- | ----------------|
-| persons.p1         | 3.0.0 | <ul><li>Release of v3 connector with updated logging and performance and no longer using uniqueId</li></ul> |
-| departments.p1     | 3.0.0 | <ul><li>Release of v3 connector with updated logging and performance and no longer using uniqueId</li></ul> |
-| persons.p1         | 2.0.0.0 | <ul><li>Release of v2 connector including support for aggregation, multiple contracts and department manager lookup</li></ul> |
-| departments.p1     | 2.0.0.0 | <ul><li>Release of v2 connector including support for aggregation, multiple contracts and department manager lookup</li></ul> |
-| persons.p1         | 1.0.0.1 | <ul><li>Added 'user-defined-fields' for both persons and contracts</li><li>Updated errorhandling</li></ul> |
-| departments.p1     | 1.0.0.1 | <ul><li>Updated errorhandling</li></ul> |
-| persons.p1         | 1.0.0.0 | <ul><li>Initial release</li></ul> |
-| departments.p1     | 1.0.0.0 | <ul><li>Initial release</li></ul> |
+See [CHANGELOG.md](CHANGELOG.md) for the complete change history.
 
 ## Getting help
 > _If you need help, feel free to ask questions on our [forum](https://forum.helloid.com)_
